@@ -1,0 +1,49 @@
+# Per-computer Codex/MCP configuration and credentials
+.codex/
+.aws/
+.env
+.env.*
+*.dpapi
+*.pem
+*.key
+connection.json
+connection.*.json
+credentials*.json
+auth.json
+
+# Separately installed MCP integrations and runtimes
+integrations/
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Local business records, handoffs, snapshots and receipts
+runs/
+workflow-state/
+work/
+.work/
+tmp/
+.tmp/
+temp/
+output/
+outputs/
+exports/
+session-output-*/
+context-handoff.md
+runtime-preflight.json
+*.log
+*.jsonl
+*.xlsx
+*.xls
+*.csv
+*.tsv
+
+# Local app attachments and editor state
+.codex-remote-attachments/
+.playwright-mcp/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

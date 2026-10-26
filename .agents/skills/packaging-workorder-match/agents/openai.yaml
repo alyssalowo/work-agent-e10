@@ -1,0 +1,4 @@
+interface:
+  display_name: "包装工单匹配"
+  short_description: "按四字段完整匹配包装工单，写前核对重复分配后一次填写"
+  default_prompt: "使用 $packaging-workorder-match，把我提供的工单 XLSX 与指定钉钉包装表完整匹配，写前核对后一次填写工单单号，填写后不做读回或刷新复核。"

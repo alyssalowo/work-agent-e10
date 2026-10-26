@@ -1,0 +1,4 @@
+interface:
+  display_name: "包装领料单匹配"
+  short_description: "全量匹配领料申请单并分类去重，核对完整结果后一次填入和标记成品"
+  default_prompt: "使用 $packaging-picking-match，先完整匹配并核对领料申请单，再一次填写指定包装计划工作表，按最终规则处理成品提示。"

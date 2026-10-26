@@ -1,0 +1,4 @@
+interface:
+  display_name: "packing order"
+  short_description: "先填写销货单和借出单，再创建审核包装工单、匹配回填及完成领料流程"
+  default_prompt: "使用 $packing-order，先将销货单、借出单填写到指定包装计划，再完成订单与指定表19来源工单创建及统一审核、工单匹配回填和领料流程；明确接续时按实际回执继续。"
