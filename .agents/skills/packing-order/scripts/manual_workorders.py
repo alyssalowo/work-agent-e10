@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guarded manual-19 scheduling over the caller's existing MCP session.
+"""Guarded manual workorder scheduling over the caller's existing MCP session.
 
 No native calls, browser control, automatic login, retry, or cached BOM reuse.
 """
@@ -14,6 +14,8 @@ import re
 import time
 from urllib.parse import urlsplit
 import uuid
+
+from workorder_sources import is_manual_source
 
 ZERO = '00000000-0000-0000-0000-000000000000'
 FIELDS = ('单号', '销货明细_品号', '销货明细_品名', '销货明细_特征码', '销货明细_业务数量', '包装工单', '排产日期')
@@ -143,13 +145,13 @@ def snapshot_rows(scope, snapshot):
                  '普通表范围、行列映射或完整性无效')
         headers = [(i, {f: r.index(f) for f in FIELDS}) for i, r in enumerate(rows[:20])
                    if all(r.count(f) == 1 for f in FIELDS)]
-        need(len(headers) == 1, '19来源表头不唯一或缺失')
+        need(len(headers) == 1, '手工来源表头不唯一或缺失')
         found[sheet['name']] = (rows, *headers[0])
     return found
 
 
 def compare_source_snapshots(scope, before, after):
-    """Protect all 19-source rows by A1 position and seven business fields."""
+    """Protect all manual-source rows by A1 position and seven business fields."""
     if isinstance(before, (str, Path)): before = read(before)
     if isinstance(after, (str, Path)): after = read(after)
     old, new = snapshot_rows(scope, before), snapshot_rows(scope, after)
@@ -167,11 +169,11 @@ def compare_source_snapshots(scope, before, after):
                 continue
             other = rows_b[index]
             need(len(row) > max(cols_a.values()) and len(other) > max(cols_b.values()), '写前快照来源行列不完整')
-            was_19, is_19 = row[cols_a['单号']].startswith('19'), other[cols_b['单号']].startswith('19')
-            if was_19 or is_19:
-                need(was_19 and is_19 and
+            was_manual, is_manual = is_manual_source(row[cols_a['单号']]), is_manual_source(other[cols_b['单号']])
+            if was_manual or is_manual:
+                need(was_manual and is_manual and
                      all(row[cols_a[f]] == other[cols_b[f]] for f in FIELDS),
-                     '写前快照19来源受保护字段变化或行移动')
+                     '写前快照手工来源受保护字段变化或行移动')
 
 
 def source_check_basis(prepared_snapshot, source_check):
@@ -187,7 +189,7 @@ def source_check_basis(prepared_snapshot, source_check):
 
 
 def validate_source_check(scope, prepared_snapshot, source_check, expected_sha256=None):
-    """Validate reused or separate source evidence against the complete 19-row scope."""
+    """Validate reused or separate source evidence against the complete manual-source scope."""
     before_path, check_path = Path(prepared_snapshot).resolve(), Path(source_check).resolve()
     need(before_path.is_file() and check_path.is_file(), '来源证据文件不存在')
     if expected_sha256 is not None:
@@ -207,13 +209,13 @@ def check_source(scope, snapshot):
     overrides = scope.get('feature_overrides', {})
     keys, references = set(), set()
     specs = scope['specs']
-    need(bool(specs), '没有明确的19来源开单范围')
+    need(bool(specs), '没有明确的手工来源开单范围')
     excluded = {(v['sheet'], v['row']) for v in scope.get('excluded_rows', [])}
     occurrences = {}
     for sheet, (rows, head, cols) in tables.items():
         count = {}
         for i, row in enumerate(rows[head + 1:], head + 2):
-            if len(row) <= max(cols.values()) or not row[cols['单号']].startswith('19'):
+            if len(row) <= max(cols.values()) or not is_manual_source(row[cols['单号']]):
                 continue
             item, feature, qty = (row[cols[f]].strip() for f in FIELDS[1:2] + FIELDS[3:5])
             override = overrides.get(f'{sheet}:{i}')
@@ -248,10 +250,10 @@ def check_source(scope, snapshot):
         raw = rows[row_index - 1]
         need(len(raw) > max(cols.values()) and raw[cols['包装工单']].strip() == '', '已有工单不能重开')
         need('source_plan_date' in spec and raw[cols['排产日期']] == spec['source_plan_date'], '来源排产日期已变化或未记录')
-        need(key in occurrences, '指定行不再是有效19来源')
+        need(key in occurrences, '指定行不再是有效手工来源')
         actual, occurrence = occurrences[key]
         expected = (spec['source_no'], args['item_code'], args['feature_code'], quantity_text(args['quantity']))
-        need(actual == expected and actual[0].startswith('19'), '来源单号、品号、特征码或数量已变化')
+        need(actual == expected and is_manual_source(actual[0]), '来源单号、品号、特征码或数量已变化')
         rules = scope['selection_rules']
         name = raw[cols['销货明细_品名']]
         need(not (args['item_code'].startswith('1-V') and any(v.casefold() in name.casefold() for v in rules['excluded_1_v_name_keywords'])) and
@@ -542,7 +544,7 @@ class ManualRun:
                 bindings.append(binding); approvals[no] = approved
             documents.append({'ID':saved['MO_ID'],'DOC_NO':no})
             created.append({'index':i,'document_no':no,'mo_id':saved['MO_ID']})
-        need(set(excluded_by_no) == {b['workorder_no'] for b in excluded_bindings}, '排除清单含非本19来源工单')
+        need(set(excluded_by_no) == {b['workorder_no'] for b in excluded_bindings}, '排除清单含非本手工来源工单')
         need(creation['documents'] == documents and creation['bindings'] == source_bindings and
              checkpoint['created'] == created and checkpoint['bindings'] == source_bindings, '开单清单或绑定已变化')
         final_bindings = [{**b,'approval_status':'Y'} for b in bindings]
@@ -570,7 +572,7 @@ class ManualRun:
 async def run_manual(call, command, base, session_id, emit=print):
     if command.get('job') not in ('manual_prepare', 'manual_create'):
         return {'ok':False,'phase':command.get('job'),'stopped':True,
-                'error':'manual_execute/manual_confirm已禁用；仅支持manual_prepare和manual_create，统一审核须等待订单与19来源全部开单完成。',
+                'error':'manual_execute/manual_confirm已禁用；仅支持manual_prepare和manual_create，统一审核须等待订单与手工来源全部开单完成。',
                 'note':'未调用任何MCP，未执行审核。'}
     directory = local(base, command['directory'])
     work = ManualRun(call, base, directory, session_id, emit)

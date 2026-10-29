@@ -3,7 +3,7 @@
 var shipmentSheetSubmit = (() => {
   const need = (condition, message) => { if (!condition) throw new Error(message); };
   const DATE_HEADER = '预计发货日期';
-  const QTY_HEADER = '销货明细_业务数量';
+  const QTY_HEADERS = ['销货明细_业务数量','借出明细_业务数量'];
   const MAX_CELLS = 30000, MAX_CSV_CHARS = 2_000_000, MAX_ROWS_PER_TYPED_CALL = 1000;
   const colNumber = s => [...s].reduce((n,c) => n * 26 + c.charCodeAt(0) - 64, 0);
   const letters = n => { let s=''; while(n){n--;s=String.fromCharCode(n%26+65)+s;n=Math.floor(n/26);} return s; };
@@ -35,7 +35,9 @@ var shipmentSheetSubmit = (() => {
   function typeHeaderMap(typeColumns, headers) {
     need(typeColumns && typeof typeColumns==='object' && !Array.isArray(typeColumns), 'type_columns must be an object');
     const keys=Object.keys(typeColumns).sort();
-    need(JSON.stringify(keys)===JSON.stringify([DATE_HEADER,QTY_HEADER].sort()), 'type_columns must declare exactly the date and quantity headers');
+    const quantityHeaders=headers.filter(h=>QTY_HEADERS.includes(h));
+    need(quantityHeaders.length===1, 'Exactly one real business quantity header required');
+    need(JSON.stringify(keys)===JSON.stringify([DATE_HEADER,quantityHeaders[0]].sort()), 'type_columns must declare exactly the date and real quantity headers');
     const map={};
     for(const [header,definition] of Object.entries(typeColumns)) {
       need(headers.includes(header), `Typed header missing from request headers: ${header}`);
@@ -99,7 +101,7 @@ var shipmentSheetSubmit = (() => {
         offset=end;
       }
 
-      for(const header of [DATE_HEADER,QTY_HEADER]) {
+      for(const header of Object.keys(typed)) {
         const col=item.headers.indexOf(header)+1, type=typed[header], indices=[];
         for(let i=0;i<item.values.length;i++) if(item.values[i][col-1]!=='' ) indices.push(i);
         for(const i of indices) {
@@ -140,7 +142,7 @@ var shipmentSheetSubmit = (() => {
         expected_operations:sheetOps.length,expected_text_operations:sheetOps.filter(op=>op.kind==='text').length,
         expected_typed_value_operations:sheetOps.filter(op=>op.kind==='typed_values').length,
         expected_format_operations:sheetOps.filter(op=>op.kind==='format').length,
-        typed_cells:item.values.reduce((n,row)=>n+(row[item.headers.indexOf(DATE_HEADER)]!==''?1:0)+(row[item.headers.indexOf(QTY_HEADER)]!==''?1:0),0),
+        typed_cells:item.values.reduce((n,row)=>n+[DATE_HEADER,...QTY_HEADERS.filter(h=>item.headers.includes(h))].filter(h=>row[item.headers.indexOf(h)]!=='').length,0),
         successful_operations:0,successful_text_operations:0,successful_typed_value_operations:0,successful_format_operations:0,
         text_complete:false,typed_values_complete:false,formats_complete:false,complete:false};
     });
@@ -164,7 +166,7 @@ var shipmentSheetSubmit = (() => {
       input_binding:io.inputBinding||null,operations:built.operations};
     // Exclusive create is the replay guard; if it fails, no remote operation is attempted.
     await persistExclusive('started.json',started);
-    const typedCells=plan.requests.reduce((n,x)=>n+x.values.reduce((m,row)=>m+(row[x.headers.indexOf(DATE_HEADER)]!==''?1:0)+(row[x.headers.indexOf(QTY_HEADER)]!==''?1:0),0),0);
+    const typedCells=built.coverage.reduce((n,x)=>n+x.typed_cells,0);
     const receipt={schema_version:1,phase:'append',ok:false,node_id:plan.node_id,target_url:plan.target_url,
       check_basis:plan.check_basis,input_binding:io.inputBinding||null,operation_count:built.operations.length,rows:plan.requests.reduce((n,x)=>n+x.values.length,0),
       typed_cells:typedCells,independent_save_verification:false,completed_operations:0,failure:null,

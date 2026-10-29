@@ -23,12 +23,15 @@ def build(source,snapshot,authorized):
         rows=list(csv.reader(io.StringIO(before['tsv']),delimiter='\t'));headers=rows[0]
         if headers!=s['headers'] or len(set(headers))!=len(headers):raise ValueError('Real header mismatch')
         if before['range']!=f'A1:{letters(len(headers))}{len(rows)}':raise ValueError('Snapshot matrix range mismatch')
-        for field in ['预计发货日期','销货明细_业务数量']:
+        quantity_headers=[h for h in headers if h in ('销货明细_业务数量','借出明细_业务数量')]
+        if len(quantity_headers)!=1:raise ValueError('Exactly one real business quantity header required')
+        quantity_header=quantity_headers[0]
+        for field in ['预计发货日期',quantity_header]:
             if headers.count(field)!=1:raise ValueError('Missing or duplicate typed field '+field)
         values=s['values']
         if not values or len(values)!=len(s['source']):raise ValueError('Missing original detail provenance')
         if any(len(row)!=len(headers) or any(not isinstance(v,str) for v in row) for row in values):raise ValueError('Invalid planned matrix')
-        requests.append({'sheet':name,'sheet_id':s['sheet_id'],'range':f'A{len(rows)+1}:{letters(len(headers))}{len(rows)+len(values)}','headers':headers,'values':values,'before_row_count':len(rows),'before_scope_complete':True,'type_columns':{'预计发货日期':{'type':'date','format':'yyyy-mm-dd'},'销货明细_业务数量':{'type':'number','format':'General'}},'detail_ids':[x['detail_id'] for x in s['source']]})
+        requests.append({'sheet':name,'sheet_id':s['sheet_id'],'range':f'A{len(rows)+1}:{letters(len(headers))}{len(rows)+len(values)}','headers':headers,'values':values,'before_row_count':len(rows),'before_scope_complete':True,'type_columns':{'预计发货日期':{'type':'date','format':'yyyy-mm-dd'},quantity_header:{'type':'number','format':'General'}},'detail_ids':[x['detail_id'] for x in s['source']]})
     return {'schema_version':1,'phase':'append','node_id':snapshot['node_id'],'target_url':snapshot['target_url'],'check_basis':'initial_complete_snapshot','requests':requests}
 
 def response_value(raw):

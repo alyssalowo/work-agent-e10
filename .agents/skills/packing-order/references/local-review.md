@@ -1,4 +1,43 @@
-# 本地分页校验与证据索引
+# 本地分页校验、证据索引与阶段接续
+
+## 阶段接续与确定性检查
+
+只在步骤完成边界或异常中断时生成一次。已有原控制器完整校验就直接引用，不再逐单复查。接续检查把“字段是否存在、原回执值是否等于预期、零新增是否明确成功”等机械核对交给脚本；业务范围、匹配、BOM、版本及审核Y仍沿用原控制器门槛。
+
+```text
+python scripts/local_review.py handoff --manifest 本轮handoff-manifest.json --out-dir 本轮新接续目录
+```
+
+manifest示例（路径相对manifest，哈希从实际原文件读取）：
+
+```json
+{
+  "schema_version": 1,
+  "task_id": "本轮唯一标识",
+  "stage": "工单创建",
+  "authorization": "用户当次已授权的原文范围或可定位摘要",
+  "exclusions": [],
+  "next_step": "仅两分支creation-gate通过后收集原planner_pending待审范围",
+  "session": {"terminal_id": "实际终端ID", "mcp_session_id": "实际会话ID"},
+  "inputs": [{
+    "role": "原控制器阶段回执",
+    "path": "workorders/实际原回执.json",
+    "sha256": "实际文件SHA256",
+    "pointers": ["/ok", "/complete", "/phase"]
+  }],
+  "checks": [
+    {"name": "原阶段明确成功", "role": "原控制器阶段回执", "pointer": "/ok", "expected": true},
+    {"name": "原阶段完整", "role": "原控制器阶段回执", "pointer": "/complete", "expected": true}
+  ]
+}
+```
+
+示例不是现有所有回执的统一schema。主代理须按当前原助手实际输出选择指针和期望值；不同阶段不可套用同一ok/complete猜测完成。必须覆盖当前阶段原门槛的成功、完整、准确phase和失败/unknown/in_flight状态；字段不存在时阻断，不能删除检查或改期望值绕过。两分支及零新增仍引用原creation-gate；审核Y仍引用原完整审核回执。事实pointers可定位原有计数、检查点、计划/回执路径和operation状态，不重建业务判断。
+
+脚本校验输入SHA256，逐项比较精确标量（true不等于1），输出handoff-checks.json和context-handoff.md。缺字段或比较不符返回check_state:blocked、非零退出码和具体缺项；成功只表示checks_passed，business_gate仍为not_evaluated，不生成“业务已完成”或自动授权。清单/对象事实只记录类型和数量，超过240字符的字符串只记录长度和哈希，避免接续文件携带整表。
+
+主代理一次验收原控制器结果、授权/排除及未解决状态后，使用该目录作为最新接续位置。新边界写新目录，保留原文件，不覆盖旧证据。完整回执始终留原路径；接续不重启会话、不重放业务。session仅允许terminal_id、mcp_session_id、operation_id，不放凭据。
+
 
 本约定供主代理交付的本地子代理任务使用。`scripts/local_review.py` 只读输入，在专用新目录输出，不连接E10/浏览器或网络。分页转换和证据定位可合并交付，已有完整结果直接复用；现有计划/回执已能定位证据时不额外建索引。主代理负责正式业务、共享状态、异常处置与放行。
 
@@ -62,4 +101,4 @@ manifest 至少包含：
 
 领料前任务从原匹配结果、audit材料及真实审核回执整理工单逐行对应和实际审核Y证据；冲突任务整理原匹配/audit/回执中可定位的冲突依据；最终报告任务汇总主代理已完成的报告与回执。领料前核对任务须覆盖全部应处理行及用户排除行：非排除行需要原字段比较与实际Y回执，排除行需要用户已确认的排除依据；任一缺失即返回 `blocked`。冲突任务缺少定位冲突所需的字段比较、原值或原始记录时返回 `blocked`，材料齐备也只表示冲突证据已整理，不表示冲突已解决。均列明缺项和证据路径。不得以脚本成功、索引生成或子代理 `ready` 取代主代理原有门槛，不得自造审核Y。最终报告子代理只汇总主代理已完成材料，不扩大处理范围。
 
-回报及主代理接收按[subagent契约](luna-subagent.md#主代理接收与放行)，完整证据留产物，不重跑同一索引或展开正常成功行。
+回报及主代理接收按[subagent契约](subagents.md#主代理接收与放行)，完整证据留产物，不重跑同一索引或展开正常成功行。

@@ -16,11 +16,22 @@
 | 技能 | 用途 |
 | --- | --- |
 | [packing-order](.agents/skills/packing-order/SKILL.md) | 包装计划至工单、领料的完整流程 |
-| [e10-shipment-sheet-fill](.agents/skills/e10-shipment-sheet-fill/SKILL.md) | 销货、借出明细填写包装计划 |
+| [e10-shipment-sheet-fill](.agents/skills/e10-shipment-sheet-fill/SKILL.md) | 销货、借出、出库申请明细填写包装计划 |
 | [packaging-workorder-match](.agents/skills/packaging-workorder-match/SKILL.md) | 包装工单匹配回填 |
 | [packaging-picking-match](.agents/skills/packaging-picking-match/SKILL.md) | 领料号按工单、仓库分类匹配回填 |
 
-技能正文及其脚本一起同步。已把技能间的引用改为项目内相对路径；业务脚本保持原样。
+技能正文及其脚本一起同步，技能间使用项目内相对路径。正常操作和异常恢复按需读取各自说明。
+
+## 离线验证
+
+在仓库根目录运行：
+
+```text
+python -m unittest discover -s tests -p "test_*.py" -v
+node tests/test_shipment_submit.cjs
+```
+
+测试只使用合成数据和本地模拟响应，覆盖三来源分表、字段映射、全表去重、接续检查及填写执行器，不连接 E10 或钉钉。通过测试不代表实际业务已完成；正式操作仍须满足原控制器和真实回执门槛。
 
 ## 同步边界
 

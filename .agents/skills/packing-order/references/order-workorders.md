@@ -2,6 +2,8 @@
 
 本页维护订单分支的generation字段、固定默认值及候选/提交保护。完整packing-order由[双分支控制器](workorder-branches.md)调用；仅明确指定独立订单阶段时才直接启动本页助手，不提前审核完整流程的订单分支。
 
+本分支通过“订单产生工单”模块，按下列技能条件批量生成。依[工单来源分类](../SKILL.md#工单来源分类)，手工前缀不进入此分支，其余单号仍须通过原订单筛选与候选校验。查询完整分页后先分流手工来源并在 `orders/complete.json` 的 `manual_source_rows` 留证；明确传入手工来源的 `included_order_nos` 会被拒绝。
+
 ## 运行参数
 
 仅当用户当次明确只要求订单生成/审核阶段时，使用 `scripts/order_workorders.py` 独立完成该范围。packing-order 默认完整流程不得使用本页直接审核，而须按 workorder-branches.md 等两来源创建后统一审核。脚本通过同一个 `mcp.ClientSession` 保持登录和内存计划；同一E10会话不并发生成或审核。

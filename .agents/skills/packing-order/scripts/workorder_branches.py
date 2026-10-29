@@ -16,6 +16,7 @@ import uuid
 
 from order_workorders import Workflow, request_config, validate_generated, validate_plan, quantity, selected_source_orders
 from manual_workorders import ManualRun, check_source, snapshot_rows, same_document, validate_source_check
+from workorder_sources import is_manual_source
 
 
 def need(condition, message):
@@ -66,14 +67,14 @@ def no_manual_needed(scope, snapshot):
                 continue
             row = row + [''] * max(0, max(cols.values())+1-len(row))
             source, item, name, order = (row[cols[f]] for f in ('单号','销货明细_品号','销货明细_品名','包装工单'))
-            if not source.startswith('19') or not item.startswith('1-'):
+            if not is_manual_source(source) or not item.startswith('1-'):
                 continue
             rules = scope['selection_rules']
             if item.startswith('1-V') and any(v.casefold() in name.casefold() for v in rules['excluded_1_v_name_keywords']):
                 continue
             if item.startswith('1-H') and any(v.casefold() in name.casefold() for v in rules['excluded_1_h_name_keywords']):
                 continue
-            need(order.strip(), '仍有19来源成品缺少工单，不能把该分支标成零新增')
+            need(order.strip(), '仍有手工来源成品缺少工单，不能把该分支标成零新增')
 
 
 def complete_manual_scope(scope, snapshot):
@@ -723,12 +724,12 @@ class WorkorderBranches:
                 actual.extend(validate_generated(self.order.read(entry['stem']+'-commit.json'),self.order.read(entry['stem']+'-prepare.json')))
         need(actual == order_rows, '订单完成清单与实际提交回执不一致')
         manual_path = self.manual.directory/'creation-completion.json'
-        need(manual_path.exists(), '19来源开单尚未完成；缺少分支不能视作零新增')
+        need(manual_path.exists(), '手工来源开单尚未完成；缺少分支不能视作零新增')
         manual_packet = read(manual_path); manual_rows = documents(manual_packet,'created_count')
         cp = read(self.manual.directory/'checkpoint.json')
-        need(cp.get('ok') is True and not cp.get('in_flight') and not cp.get('failure') and cp.get('stage') in ('created','approved'), '19来源分支状态未确认')
+        need(cp.get('ok') is True and not cp.get('in_flight') and not cp.get('failure') and cp.get('stage') in ('created','approved'), '手工来源分支状态未确认')
         prepared = read(self.manual.directory/'prepared.json')
-        need(manual_packet['prepared_sha256'] == digest(self.manual.directory/'prepared.json') and len(manual_rows) == prepared['count'], '19来源完成范围与准备不符')
+        need(manual_packet['prepared_sha256'] == digest(self.manual.directory/'prepared.json') and len(manual_rows) == prepared['count'], '手工来源完成范围与准备不符')
         if prepared.get('empty'):
             need(manual_packet.get('empty') is True and not manual_rows, '零新增分支凭据不一致')
         else:
@@ -757,10 +758,10 @@ class WorkorderBranches:
         manual_plan = read(manual_prepared)
         check_basis = validate_source_check(scope, manual_plan['source_snapshot'], source_check,
                                             manual_plan['source_sha256'])
-        need(not (self.manual.directory/'checkpoint.json').exists(), '19分支已有执行检查点，不重放')
+        need(not (self.manual.directory/'checkpoint.json').exists(), '手工分支已有执行检查点，不重放')
         if scope['specs']:
             age = (datetime.now(timezone.utc)-datetime.fromisoformat(manual_plan['first_prepare_utc'])).total_seconds()
-            need(manual_plan['session_id'] == self.session_id and 0 <= age < 25*60, '19来源草稿会话不符或已接近过期')
+            need(manual_plan['session_id'] == self.session_id and 0 <= age < 25*60, '手工来源草稿会话不符或已接近过期')
         need(all(e['session'] == self.session_id and 0 <= time.time()-e['created'] < 25*60
                  for e in self.order.state['generation']['entries'] if e['operation_id'] and not e.get('completed')),
              '订单草稿会话不符或已接近过期')
@@ -939,7 +940,7 @@ class WorkorderBranches:
                         packet=read(p)
                         if packet.get('ok') is True: approved[number]=packet[key]
                         break
-            need(number in approved, '19来源手工工单缺少续办前或续办后的实际Y回执')
+            need(number in approved, '手工工单缺少续办前或续办后的实际Y回执')
             self.manual_validator(number,approved[number],'Y')
         if manual_docs:
             manual_completion = self.manual.complete_after_approval(approved, excluded_by_no, continuation_id)

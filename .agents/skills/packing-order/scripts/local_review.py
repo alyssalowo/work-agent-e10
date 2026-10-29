@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline workorder-source checks and evidence indexing; no business actions."""
+"""Offline source checks, evidence indexing and stage handoff; no business actions."""
 import argparse
 import csv
 from datetime import date
@@ -133,6 +133,8 @@ def pointer(value, expression):
 def describe(value):
     if isinstance(value,(dict,list)):
         return {'value_type':'object' if isinstance(value,dict) else 'array','item_count':len(value)}
+    if isinstance(value,str) and len(value)>240:
+        return {'value_type':'str','characters':len(value),'sha256':sha(value.encode('utf-8'))}
     if isinstance(value,Decimal):return {'value_type':'number','number_text':str(value)}
     return {'value_type':type(value).__name__,'value':value}
 
@@ -162,17 +164,80 @@ def evidence(manifest_path, directory):
             'business_gate':'not_evaluated','outputs':files}
 
 
+def handoff(manifest_path, directory):
+    """Evaluate explicit factual assertions and extract values from frozen originals.
+
+    This checks local evidence, never certifies a business stage or authorizes a write.
+    Missing assertions/fields are blocking; false/zero are not treated as missing.
+    """
+    path,manifest,frozen=read_manifest(manifest_path)
+    for key in ('stage','authorization','next_step'):
+        need(isinstance(manifest.get(key),str) and bool(manifest[key].strip()),'缺少接续字段：'+key)
+    need(isinstance(manifest.get('exclusions'),list),'须明确列出本轮排除，零项用空数组')
+    inputs=manifest.get('inputs');need(isinstance(inputs,list) and bool(inputs),'缺少原始证据')
+    sources={};facts=[]
+    for item in inputs:
+        role=item.get('role')
+        need(isinstance(role,str) and bool(role.strip()) and role not in sources,'证据角色缺失或重复')
+        source,data=input_file(path,item,frozen)
+        need(source.suffix.lower()=='.json','接续证据须为原始JSON')
+        value=parse(data);sources[role]=value
+        pointers=item.get('pointers',[])
+        need(isinstance(pointers,list) and len(set(pointers))==len(pointers),'接续指针无效或重复')
+        facts.append({'role':role,'path':str(source),'sha256':sha(data),
+                      'facts':[{'pointer':p,**describe(pointer(value,p))} for p in pointers]})
+    checks=manifest.get('checks');need(isinstance(checks,list) and bool(checks),'缺少确定性检查，不能只靠索引判断')
+    outcomes=[]
+    names=set()
+    for check in checks:
+        name=check.get('name');role=check.get('role')
+        need(isinstance(name,str) and bool(name.strip()) and name not in names,'检查名称缺失或重复')
+        names.add(name);need(role in sources and 'expected' in check,'检查缺少来源或期望值')
+        expected=check['expected']
+        need(expected is None or type(expected) in (bool,str,int,Decimal),'检查期望值须为明确标量')
+        expression=check.get('pointer');error=None;actual=None
+        try:actual=pointer(sources[role],expression)
+        except (ValueError,IndexError,KeyError) as exc:error=str(exc)
+        # bool and number must not compare equal (True == 1 in Python).
+        passed=error is None and type(actual) is type(expected) and actual==expected
+        outcomes.append({'name':name,'role':role,'pointer':expression,'passed':passed,
+                         'expected':describe(expected),'actual':describe(actual),'error':error})
+    blocked=[x['name'] for x in outcomes if not x['passed']]
+    session=manifest.get('session',{})
+    need(isinstance(session,dict) and set(session)<={'terminal_id','mcp_session_id','operation_id'},'会话只保留必要ID，不记录凭据')
+    need(all(isinstance(v,(str,int)) and type(v) is not bool for v in session.values()),'会话ID类型无效')
+    result={'ok':not blocked,'task_id':manifest['task_id'],'stage':manifest['stage'],
+            'check_state':'blocked' if blocked else 'checks_passed','blocked_checks':blocked,
+            'business_gate':'not_evaluated','main_agent_review_required':True,
+            'authorization':manifest['authorization'],'exclusions':manifest['exclusions'],
+            'next_step':manifest['next_step'],'session':session,'checks':outcomes,'evidence':facts,
+            'input_sha256':{str(p):v for p,v in frozen.items()}}
+    lines=['# 阶段接续', '', '任务：'+manifest['task_id'], '阶段：'+manifest['stage'],
+           '本地检查：'+result['check_state'], '业务门槛：未评估，须由主代理按原控制器和真实回执确认。',
+           '', '授权：'+manifest['authorization'], '排除：'+json_text(manifest['exclusions']).strip(),
+           '下一步及门槛：'+manifest['next_step'], '会话ID：'+json_text(session).strip(), '', '## 确定性检查', '']
+    for check in outcomes:
+        lines.append('- '+('通过' if check['passed'] else '阻断')+'：'+check['name']+'（'+str(check['role'])+str(check['pointer'])+'）')
+    lines.extend(['','## 原始证据与事实',''])
+    for fact in facts:
+        lines.append('- '+fact['role']+'：'+fact['path']+'；SHA256='+fact['sha256'])
+        for item in fact['facts']:lines.append('  - '+json.dumps(item,ensure_ascii=False))
+    files=publish(directory,frozen,{'handoff-checks.json':json_text(result),'context-handoff.md':'\n'.join(lines)+'\n'})
+    return {'ok':not blocked,'task_id':manifest['task_id'],'check_state':result['check_state'],
+            'blocked_checks':blocked,'business_gate':'not_evaluated','outputs':files}
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     sub=parser.add_subparsers(dest='command',required=True)
-    for name in ('workorders','evidence'):
+    for name in ('workorders','evidence','handoff'):
         command=sub.add_parser(name);command.add_argument('--manifest',required=True);command.add_argument('--out-dir',required=True)
     args=parser.parse_args()
     try:result=globals()[args.command](args.manifest,args.out_dir)
     except Exception as exc:
         print(json.dumps({'ok':False,'error':str(exc),'business_gate':'not_evaluated','automatic_retry':False},ensure_ascii=False))
         return 2
-    print(json.dumps(result,ensure_ascii=False));return 0
+    print(json.dumps(result,ensure_ascii=False));return 0 if result.get('ok') else 2
 
 
 if __name__=='__main__':sys.exit(main())

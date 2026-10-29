@@ -18,6 +18,8 @@ import sys
 import time
 import uuid
 
+from workorder_sources import is_manual_source
+
 
 class WorkflowError(ValueError):
     pass
@@ -89,6 +91,7 @@ def request_config(value):
             included = generation['included_order_nos']
             need(isinstance(included, list) and all(number(v) for v in included), 'included_order_nos须为有效单号列表')
             need(len(included) == len(set(included)), 'included_order_nos不可重复')
+            need(not any(is_manual_source(v) for v in included), '手工来源不能进入订单产生工单范围')
         result['generation'] = generation
     if 'approval' in value:
         approval = value['approval']
@@ -112,6 +115,7 @@ def exclusion(code, name, generation):
 
 
 def validate_plan(packet, numbers, plant, generation):
+    need(not any(is_manual_source(v) for v in numbers), '手工来源不能进入订单产生工单范围')
     need(packet.get('ok') is True and packet.get('saved') is False, '准备失败或不是未保存候选')
     summary = packet['summary']
     need(summary['order_nos'] == numbers and summary['plant'] == plant, '准备结果的订单或工厂不符')
@@ -295,17 +299,20 @@ class Workflow:
                 break
             need(result['has_next_page'] is True and result['rows'], '订单分页完整性未知')
             start = result['next_start_row']
+        manual_source_rows = [row for row in rows if is_manual_source(row['DOC_NO'])]
+        rows = [row for row in rows if not is_manual_source(row['DOC_NO'])]
         included = generation.get('included_order_nos')
         if included is not None:
             present = {row['DOC_NO'] for row in rows}
             missing = [value for value in included if value not in present]
             packet = {'ok': True, 'complete': True, 'has_next_page': False, 'filters': filters, 'plant': plant,
                       'all_rows': rows, 'rows': [row for row in rows if row['DOC_NO'] in set(included)],
-                      'included_order_nos': included}
+                      'included_order_nos': included, 'manual_source_rows': manual_source_rows}
             self.write('orders/complete.json', packet)
             need(not missing, 'blocked: included_order_nos不存在于完整合规订单查询结果或被筛选条件排除: ' + ','.join(missing))
             return packet
-        packet = {'ok': True, 'complete': True, 'has_next_page': False, 'filters': filters, 'plant': plant, 'rows': rows}
+        packet = {'ok': True, 'complete': True, 'has_next_page': False, 'filters': filters, 'plant': plant, 'rows': rows,
+                  'manual_source_rows': manual_source_rows}
         self.write('orders/complete.json', packet)
         return packet
 
