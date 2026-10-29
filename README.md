@@ -29,7 +29,7 @@
 ```text
 python -m unittest discover -s tests -p "test_*.py" -v
 python -m unittest discover -s .agents/skills/packing-order/tests -p "test_*.py" -v
-node --test tests/test_shipment_submit.cjs tests/test_restricted_sheet_entry.cjs .agents/skills/packing-order/tests/test_sheet_read_plan.cjs .agents/skills/packing-order/tests/test_sheet_read_collect.cjs
+node --test tests/test_shipment_submit.cjs tests/test_restricted_sheet_entry.cjs tests/test_round3_sheet_timing.cjs .agents/skills/packing-order/tests/test_sheet_read_plan.cjs .agents/skills/packing-order/tests/test_sheet_read_collect.cjs
 ```
 
 测试只使用合成数据和本地模拟响应，覆盖三来源分表、字段映射、全表去重、接续检查及填写执行器，不连接 E10 或钉钉。通过测试不代表实际业务已完成；正式操作仍须满足原控制器和真实回执门槛。
@@ -39,6 +39,12 @@ node --test tests/test_shipment_submit.cjs tests/test_restricted_sheet_entry.cjs
 默认 Sol medium、Terra medium、Luna low，固定校验覆盖的正常数据不做重复模型审计。已加入原始三来源分页证据、销货作废筛选、受限入口离线验证、按需快照采集和任务额度记录。具体开放状态与限制见[第二轮控制门槛](.agents/skills/packing-order/references/round2-controls.md)。
 
 Terra 正式写入仍关闭：当前宿主工具隔离尚未验证。离线回归不代表线上适配或额度节省已验收；真实业务数据不用于技能测试。
+
+## 第三轮优化
+
+持续会话可加 `--profile-local` 记录本地读写、哈希、JSON、子进程及 MCP 等待的简短数字汇总，默认关闭。统一开单入口复用本次同步校验读取的文件内容，纯哈希证据采用流式读取；跨阶段、外部等待及正式写入前的检查继续独立执行。钉钉回执增加单调时钟计时；宿主不提供该时钟时明确记录不可用，不影响业务。
+
+具体收益、覆盖范围和未验收项见[第三轮验收记录](docs/第三轮优化验收.md)。本轮保持第二轮模型分工和权限架构，不以正式 ERP 或钉钉写入测速。
 
 ## 同步边界
 

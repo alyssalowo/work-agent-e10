@@ -95,4 +95,6 @@ read_sequence每项在原工具名、output和ok之外附带白名单summary，�
 
 `workflow-timing.jsonl`记录阶段命令耗时及since_previous_command_seconds；progress.jsonl含observed_utc。日志重叠和度量边界按[执行约定](performance.md#度量边界)，不以文件mtime估计接口耗时。
 
+需要采集正常授权任务的性能样本时，在同一启动命令加 `--profile-local`。默认不生成附加性能日志；开启后仅在本轮 `local-performance.jsonl` 追加数字汇总，不输出大日志。覆盖范围、指标口径和缓存边界见[可选性能记录](performance.md#可选性能记录)。不为采样重新执行业务，不在每个命令间重启会话，也不要求 Agent 手工计算或比较 SHA256。
+
 认证失效与中断按[异常恢复](mcp-session-recovery.md)处理，正常同轮复用已核实路径和完整快照。

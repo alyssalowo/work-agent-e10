@@ -18,6 +18,7 @@ import sys
 import time
 import uuid
 
+from local_evidence import read_json, json_text, write_text
 from workorder_sources import is_manual_source
 
 
@@ -50,7 +51,7 @@ def need(condition, message):
 
 
 def load(path):
-    return json.loads(Path(path).read_text(encoding='utf-8-sig'))
+    return read_json(path)
 
 
 def fingerprint(value):
@@ -250,13 +251,12 @@ class Workflow:
     def write(self, name, value, exclusive=False):
         path = self.path(name)
         path.parent.mkdir(parents=True, exist_ok=True)
-        data = json.dumps(value, ensure_ascii=False, indent=2) + '\n'
+        data = json_text(value, ensure_ascii=False, indent=2) + '\n'
         if exclusive:
-            with path.open('x', encoding='utf-8') as stream:
-                stream.write(data)
+            write_text(path, data, exclusive=True)
         else:
             temp = path.with_name(path.name + '.tmp')
-            temp.write_text(data, encoding='utf-8')
+            write_text(temp, data)
             temp.replace(path)
 
     def persist(self):

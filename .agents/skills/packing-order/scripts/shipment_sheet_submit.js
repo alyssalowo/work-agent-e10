@@ -157,6 +157,12 @@ var shipmentSheetSubmit = (() => {
   }
   async function run(plan,io) {
     need(io && typeof io.persistNew==='function' && typeof io.writeCsv==='function' && typeof io.updateFormat==='function', 'persistNew, writeCsv, and updateFormat callbacks required');
+    const monotonicNow=()=>typeof globalThis.performance?.now==='function'?globalThis.performance.now():null;
+    const elapsedTiming=start=>{
+      if(start===null)return {elapsed_seconds:null,timing_clock:'unavailable'};
+      const end=monotonicNow();
+      return end===null?{elapsed_seconds:null,timing_clock:'unavailable'}:{elapsed_seconds:(end-start)/1000,timing_clock:'monotonic'};
+    };
     const persistExclusive=async(name,value)=>{
       const saved=await io.persistNew(name,value);
       need(saved!==false && saved?.isError!==true && saved?.structuredContent?.success!==false && saved?.success!==false, `Exclusive persistence failed: ${name}`);
@@ -174,9 +180,12 @@ var shipmentSheetSubmit = (() => {
     const persistFailure=async()=>{receipt.failure_evidence_persisted=true;try{await persistExclusive('failure.json',{receipt});}catch(error){receipt.failure_evidence_persisted=false;receipt.failure_evidence_error=String(error?.message||error);}};
     for(let i=0;i<built.operations.length;i++) {
       const op=built.operations[i], index=i+1, file=`operation-${String(index).padStart(6,'0')}.json`; let raw,thrown=null;
+      const startedUtc=new Date().toISOString(), tick=monotonicNow();
       try { raw=op.kind==='format'?await io.updateFormat(op):await io.writeCsv(op); }
       catch(error) { thrown=String(error?.message||error); }
-      const operationRecord={operation:index,index,kind:op.kind,sheet:op.sheet,range:op.range,request:op,response:thrown===null?raw:null,...(thrown===null?{}:{error:thrown})};
+      const returnedUtc=new Date().toISOString(), timing=elapsedTiming(tick);
+      const operationRecord={operation:index,index,kind:op.kind,sheet:op.sheet,range:op.range,request:op,response:thrown===null?raw:null,
+        started_utc:startedUtc,returned_utc:returnedUtc,...timing,...(thrown===null?{}:{error:thrown})};
       try { await persistExclusive(file,operationRecord); }
       catch(error) {
         receipt.failure={operation:index,kind:op.kind,sheet:op.sheet,range:op.range,state:'unknown',

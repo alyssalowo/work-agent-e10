@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from local_evidence import run_subprocess
 
 
 def inspect_runtime(server, python=None, identity_probe=None):
@@ -49,7 +50,7 @@ def inspect_runtime(server, python=None, identity_probe=None):
                 identity = identity_probe(credential)
             elif os.name == 'nt':
                 powershell = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
-                result = subprocess.run([str(powershell), '-NoProfile', '-NonInteractive', '-File',
+                result = run_subprocess([str(powershell), '-NoProfile', '-NonInteractive', '-File',
                     str(Path(__file__).with_name('runtime_identity.ps1')), '-CredentialPath', str(credential)],
                     capture_output=True, timeout=15,
                     creationflags=subprocess.CREATE_NO_WINDOW, check=True)

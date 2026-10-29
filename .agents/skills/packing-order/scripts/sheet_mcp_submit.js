@@ -2,6 +2,12 @@
  * No browser, network client, credentials, filesystem or automatic retries. */
 var packingSheetSubmit = (() => {
   const need = (ok, message) => { if (!ok) throw new Error(message); };
+  const monotonicNow = () => typeof globalThis.performance?.now === 'function' ? globalThis.performance.now() : null;
+  const elapsedTiming = start => {
+    if (start === null) return {elapsed_seconds:null,timing_clock:'unavailable'};
+    const end=monotonicNow();
+    return end===null?{elapsed_seconds:null,timing_clock:'unavailable'}:{elapsed_seconds:(end-start)/1000,timing_clock:'monotonic'};
+  };
   const colNumber = s => [...s].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0);
   const letters = n => { let s = ''; while (n) { n--; s = String.fromCharCode(n % 26 + 65) + s; n = Math.floor(n / 26); } return s; };
   const cell = s => { const m = /^([A-Z]+)([1-9]\d*)$/.exec(s); need(m, 'Invalid A1 cell'); return {col: colNumber(m[1]), row: Number(m[2])}; };
@@ -138,6 +144,7 @@ var packingSheetSubmit = (() => {
 
   async function run(input, io) {
     need(typeof io?.updateRange === 'function' && (typeof io?.persistNew === 'function' || typeof io?.persistBatch === 'function'), 'Primary-agent MCP and exclusive persistence callbacks required');
+    monotonicNow();
     const built = buildRequests(input), spec = input.spec;
     const receipt = {schema_version:1, transport:'dingtalk_sheet', phase:'submit', kind:spec.kind,
       batch_id:spec.batch_id, node_id:input.batch.node_id, target_url:spec.target_url, ok:false, submitted:[],
@@ -158,18 +165,20 @@ var packingSheetSubmit = (() => {
     };
     for (let i=0; i<built.requests.length; i++) {
       const group = built.requests[i], stem = `write-${String(i+1).padStart(4,'0')}`;
-      const started = Date.now(); let raw;
+      const started = monotonicNow(), startedUtc=new Date().toISOString(); let raw;
       try { raw = await io.updateRange(group.request); }
       catch (error) {
+        const returnedUtc=new Date().toISOString(), timing=elapsedTiming(started);
         receipt.failure = {sheet:group.sheet, range:group.request.rangeAddress, state:'unknown',
           error:String(error.message || error), note:'Inspect only the affected range; do not replay.'};
         results.push({index:i+1,sheet:group.sheet,range:group.request.rangeAddress,state:'unknown',
-          error:receipt.failure.error,started_utc:new Date(started).toISOString(),returned_utc:new Date().toISOString(),elapsed_seconds:(Date.now()-started)/1000});
+          error:receipt.failure.error,started_utc:startedUtc,returned_utc:returnedUtc,...timing});
         await persistFinal();
         return receipt;
       }
-      const resultRow={index:i+1,sheet:group.sheet,range:group.request.rangeAddress,result:raw,started_utc:new Date(started).toISOString(),
-        returned_utc:new Date().toISOString(),elapsed_seconds:(Date.now()-started)/1000};
+      const returnedUtc=new Date().toISOString();
+      const resultRow={index:i+1,sheet:group.sheet,range:group.request.rangeAddress,result:raw,started_utc:startedUtc,
+        returned_utc:returnedUtc,...elapsedTiming(started)};
       results.push(resultRow);
       const value = responseValue(raw);
       if (value.success !== true) {
@@ -266,6 +275,7 @@ var packingSheetSubmit = (() => {
     return true;
   }
   async function collectWithTools({tools,workDir,rawPath,targetUrl,nodeId,sheets,maxChars=200000,readPlan}) {
+    monotonicNow();
     need(Array.isArray(sheets) && sheets.length && new Set(sheets.map(s=>s.name)).size===sheets.length, 'Explicit unique sheet scope required');
     need(new Set(sheets.map(s=>s.sheet_id)).size===sheets.length && sheets.every(s=>s.name && s.sheet_id), 'Real unique sheet IDs required');
     const urlNode=/\/i\/nodes\/([^/?#]+)/.exec(targetUrl || '');
@@ -283,10 +293,10 @@ var packingSheetSubmit = (() => {
       need((readPlan.recovery_blocked===true && readPlan.status==='recovery_blocked' && readPlan.actions.length>0 && readPlan.actions.every(a=>a.action==='recheck_range')) || (readPlan.recovery_blocked===false && readPlan.status==='ready' && readPlan.actions.every(a=>a.action!=='recheck_range')), 'Invalid recovery status');
       if(!readPlan.recovery_blocked) need(readPlan.actions.length===sheets.length && new Set(readPlan.actions.map(a=>a.sheet_id)).size===sheets.length, 'Incomplete planned scope');
     }
-    const started=Date.now(), raw={target_url:targetUrl,node_id:nodeId,round_id:readPlan?.round_id,recovery_blocked:readPlan?.recovery_blocked===true,captured_at:new Date().toISOString(),sheets:[]};
+    const started=monotonicNow(), raw={target_url:targetUrl,node_id:nodeId,round_id:readPlan?.round_id,recovery_blocked:readPlan?.recovery_blocked===true,captured_at:new Date().toISOString(),sheets:[]};
     const actions=readPlan ? readPlan.actions : sheets.map(s=>({action:'read_full',sheet_id:s.sheet_id,sheet_name:s.name}));
     const results=await Promise.allSettled(actions.map(async action=>{
-      const s=sheets.find(x=>x.sheet_id===action.sheet_id), tick=Date.now();
+      const s=sheets.find(x=>x.sheet_id===action.sheet_id), tick=monotonicNow();
       need(['read_full','read_doc_no_column','reuse_full_snapshot','recheck_range'].includes(action.action),'Unknown read action');
       if(action.action==='reuse_full_snapshot') {
         need(action.cache?.path && action.cache?.sha256,'Missing raw cache binding');
@@ -306,7 +316,7 @@ var packingSheetSubmit = (() => {
       if(action.action==='read_full')need(range===full,'Planned full range changed');
       if(action.action==='read_doc_no_column')need(typeof action.doc_no_column==='string' && range===`${action.doc_no_column}1:${action.doc_no_column}${metadata.nonEmptyRange.lastRow}`, 'Document number scope must be one complete column');
       const response=responseValue(await tools.mcp__dingtalk_sheet__get_range_as_csv({nodeId,sheetId:s.sheet_id,range,annotateRowNumbers:false,maxChars}));
-      const row={name:s.name,sheet_id:s.sheet_id,metadata,response,capture_scope:action.action==='read_full'?'full':action.action==='read_doc_no_column'?'doc_no_column':'recheck_range',elapsed_seconds:(Date.now()-tick)/1000};
+      const row={name:s.name,sheet_id:s.sheet_id,metadata,response,capture_scope:action.action==='read_full'?'full':action.action==='read_doc_no_column'?'doc_no_column':'recheck_range',...elapsedTiming(tick)};
       validateCapturedSheet(row,{name:s.name,sheet_id:s.sheet_id,range,full_range:full});
       if(action.action==='read_doc_no_column')need(parseCsv(response.csv)[0][0]==='单号','Document number column header differs');
       return row;
@@ -320,7 +330,7 @@ var packingSheetSubmit = (() => {
     const data=JSON.stringify(raw);
     await persistRawWithTools({tools,rawPath,data});
     return {ok:failures.length===0 && !readPlan?.recovery_blocked,phase:'sheet_collect',status:readPlan?.recovery_blocked?'recovery_blocked':failures.length?'failed':'collected',raw_file:rawPath,
-      elapsed_seconds:(Date.now()-started)/1000,failures,
+      ...elapsedTiming(started),failures,
       sheets:raw.sheets.map(s=>({name:s.name,sheet_id:s.sheet_id,range:s.response.returnedRange,capture_scope:s.capture_scope})),
       snapshot_validation_required:true};
   }

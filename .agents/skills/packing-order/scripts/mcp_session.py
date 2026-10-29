@@ -12,6 +12,7 @@ import time
 import uuid
 from pathlib import Path
 
+from local_evidence import Profile, read_json, json_text, write_text, record
 from manual_workorders import run_manual
 from workorder_branches import WorkorderBranches
 from session_output import SessionOutput, compact, print_json
@@ -21,14 +22,14 @@ from session_commands import (ToolCatalog, prepare_reads, read_request, resolve_
 
 
 def read(path):
-    return json.loads(Path(path).read_text(encoding='utf-8-sig'))
+    return read_json(path)
 
 
 def save(path, data):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + '.tmp')
-    temp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    write_text(temp, json_text(data, ensure_ascii=False, indent=2) + '\n')
     temp.replace(path)
 
 
@@ -216,6 +217,15 @@ async def read_sequence(call, command, base):
     return {'ok':True, 'phase':'read_sequence', 'count':len(completed), 'completed':completed}
 
 
+def append_performance(base, metrics):
+    try:
+        with (base/'local-performance.jsonl').open('a', encoding='utf-8') as stream:
+            stream.write(json.dumps({'schema_version':1, **metrics})+'\n')
+    except OSError:
+        # Optional telemetry must not change a business outcome or cause replay.
+        print_json({'event':'performance_log_error', 'automatic_retry':False})
+
+
 async def session_loop(args):
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
@@ -229,9 +239,13 @@ async def session_loop(args):
     call_sequence = 0
     previous_command_end = None
     params = StdioServerParameters(command=sys.executable, args=[str(server)], cwd=str(server.parent), env={**os.environ,'PYTHONUTF8':'1'})
+    startup_tick = time.perf_counter()
     async with stdio_client(params) as streams:
         async with ClientSession(*streams, read_timeout_seconds=timedelta(seconds=330)) as session:
             await session.initialize()
+            if getattr(args, 'profile_local', False):
+                append_performance(base, {'scope':'server_ready', 'session_id':session_id,
+                    'process_starts':1, 'elapsed_seconds':round(time.perf_counter()-startup_tick, 9)})
             catalog = await ToolCatalog.load(session)
             save(output.directory/'capabilities.json', catalog.schemas)
             async def call(name, **arguments):
@@ -254,7 +268,9 @@ async def session_loop(args):
                     metric.update(ok=False,exception_type=type(exc).__name__)
                     raise
                 finally:
-                    metric.update(elapsed_seconds=round(time.perf_counter()-tick,6),
+                    elapsed = time.perf_counter()-tick
+                    record(mcp_calls=1, mcp_wait_seconds=elapsed)
+                    metric.update(elapsed_seconds=round(elapsed,6),
                                   returned_utc=datetime.now(timezone.utc).isoformat())
                     # Arguments, business payloads and credentials never enter the timing log.
                     with (base/'mcp-calls.jsonl').open('a',encoding='utf-8') as output:
@@ -266,36 +282,44 @@ async def session_loop(args):
                 line = await asyncio.to_thread(sys.stdin.readline)
                 if not line:
                     break
-                try:
-                    command, command_proof = resolve_command(json.loads(line), base)
-                    validate_command(command, base)
-                    if command.get('exit') is True:
-                        break
-                    command_start = time.perf_counter()
-                    command_metric = {'session_id':session_id, 'ok':False, 'phase':command.get('phase') or command.get('job') or 'request',
-                                      'started_utc':datetime.now(timezone.utc).isoformat(),
-                                      'since_previous_command_seconds':None if previous_command_end is None else round(command_start-previous_command_end,6)}
-                    if command_proof:
-                        command_metric['command_source'] = command_proof
+                profile = Profile(enabled=getattr(args, 'profile_local', False))
+                with profile:
                     try:
-                        answer = await dispatch_command(call, command, base, session_id, branch_runs, output.progress)
+                        command, command_proof = resolve_command(json.loads(line), base)
+                        validate_command(command, base)
+                        if command.get('exit') is True:
+                            break
+                        command_start = time.perf_counter()
+                        command_metric = {'session_id':session_id, 'ok':False, 'phase':command.get('phase') or command.get('job') or 'request',
+                                          'started_utc':datetime.now(timezone.utc).isoformat(),
+                                          'since_previous_command_seconds':None if previous_command_end is None else round(command_start-previous_command_end,6)}
                         if command_proof:
-                            answer = {**answer, 'command_source': command_proof}
-                        command_metric['ok'] = answer.get('ok') is True
-                        output.complete(answer)
-                    finally:
-                        previous_command_end = time.perf_counter()
-                        command_metric.update(elapsed_seconds=round(previous_command_end-command_start,6),
-                                              returned_utc=datetime.now(timezone.utc).isoformat())
-                        with (base/'workflow-timing.jsonl').open('a',encoding='utf-8') as metric_output:
-                            metric_output.write(json.dumps(command_metric,ensure_ascii=False)+'\n')
-                except Exception as exc:
-                    failure = {'ok':False,'error':str(exc),'note':'未自动重试；已开始的写入先核对检查点和E10实际状态'}
-                    try:
-                        output.complete(failure)
-                    except Exception:
-                        # Persistence failure must still surface; never rerun the command.
-                        print_json({**failure, 'error':str(exc)[:600], 'result_evidence_error':True})
+                            command_metric['command_source'] = command_proof
+                        try:
+                            # Already resolved and schema-checked above; do not repeat the same pass.
+                            validate_capabilities(command, catalog)
+                            answer = await _dispatch_validated(call, command, base, session_id, branch_runs, output.progress)
+                            if command_proof:
+                                answer = {**answer, 'command_source': command_proof}
+                            command_metric['ok'] = answer.get('ok') is True
+                            output.complete(answer)
+                        finally:
+                            previous_command_end = time.perf_counter()
+                            command_metric.update(elapsed_seconds=round(previous_command_end-command_start,6),
+                                                  returned_utc=datetime.now(timezone.utc).isoformat())
+                            with (base/'workflow-timing.jsonl').open('a',encoding='utf-8') as metric_output:
+                                metric_output.write(json.dumps(command_metric,ensure_ascii=False)+'\n')
+                    except Exception as exc:
+                        failure = {'ok':False,'error':str(exc),'note':'未自动重试；已开始的写入先核对检查点和E10实际状态'}
+                        try:
+                            output.complete(failure)
+                        except Exception:
+                            # Persistence failure must still surface; never rerun the command.
+                            print_json({**failure, 'error':str(exc)[:600], 'result_evidence_error':True})
+                if profile.enabled:
+                    append_performance(base, {'scope':'command', 'session_id':session_id,
+                        'command_sequence':output.sequence, **profile.snapshot()})
+
 
 
 def main():
@@ -303,13 +327,17 @@ def main():
     parser.add_argument('--server', required=True)
     parser.add_argument('--work-dir', required=True)
     parser.add_argument('--discover-tools', action='store_true', help='Opt in to tool discovery; save names to a local manifest')
+    parser.add_argument('--profile-local', action='store_true', help='Record numeric local performance totals; no payloads or file paths')
     parser.add_argument('--preflight', action='store_true', help='Local runtime check only; do not start MCP or log in')
     args = parser.parse_args()
     base = Path(args.work_dir).resolve()
     if base.is_relative_to(Path(__file__).resolve().parents[1]):
         raise ValueError('预检及业务产物必须保存在技能目录之外')
-    result = inspect_runtime(args.server)
-    save(base/'runtime-preflight.json', result)
+    with Profile(enabled=args.profile_local) as profile:
+        result = inspect_runtime(args.server)
+        save(base/'runtime-preflight.json', result)
+    if profile.enabled:
+        append_performance(base, {'scope':'local_preflight', **profile.snapshot()})
     summary = {'ok':result['ok'], 'phase':'local_preflight', 'offline':True,
                'checks':len(result['checks']), 'failed':result['failed'],
                'output':str(base/'runtime-preflight.json')}

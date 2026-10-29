@@ -10,6 +10,7 @@ import argparse
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+from local_evidence import VerifiedInputs, digest_file, read_json, json_text, write_text
 import re
 import time
 import uuid
@@ -25,18 +26,18 @@ def need(condition, message):
 
 
 def read(path):
-    return json.loads(path.read_text(encoding='utf-8-sig'))
+    return read_json(path)
 
 
 def save(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name+'.tmp')
-    temp.write_text(json.dumps(value, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+    write_text(temp, json_text(value, ensure_ascii=False, indent=2)+'\n')
     temp.replace(path)
 
 
 def digest(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return digest_file(path)
 
 
 def local(base, name):
@@ -274,13 +275,14 @@ class WorkorderBranches:
                  '仅可在统一审核失败/未知时校验原creation-gate')
         else:
             need(not self.state.get('failure') and not self.state.get('in_flight'), '有未解决的分支失败或未知状态，先核对实际单据')
+        path = self.directory/'prepared.json'
+        checked = VerifiedInputs(keep=(path, self.manual_scope_path, self.manual.directory/'prepared.json'))
         for name, expected in self.input_hashes.items():
-            need(digest(Path(name)) == expected, '本轮输入已被修改')
+            checked.verify(name, expected, '本轮输入已被修改')
         if self.state['stage'] != 'new':
-            path = self.directory/'prepared.json'
-            need(digest(path) == self.state['prepared_sha256'], '两类完整准备计划已变化')
-            for name, expected in read(path)['evidence_sha256'].items():
-                need(digest(Path(name)) == expected, '分支准备证据已变化')
+            checked.verify(path, self.state['prepared_sha256'], '两类完整准备计划已变化')
+            for name, expected in checked.json(path)['evidence_sha256'].items():
+                checked.verify(name, expected, '分支准备证据已变化')
         if allow_approval_failure:
             failure = self.order.state.pop('failure')
             inflight = self.order.state.pop('in_flight')
@@ -291,6 +293,7 @@ class WorkorderBranches:
                 self.order.state['in_flight'] = inflight
         else:
             self.order.ready()
+        return checked
 
     def check_manual_actor(self):
         for path in self.manual.directory.glob('preview-*.json'):
@@ -746,16 +749,14 @@ class WorkorderBranches:
                 'documents':all_rows,'input_hashes':self.input_hashes}
 
     async def create(self, approved_sha256, source_check):
-        self.ready(); need(self.state['stage'] == 'prepared', '两类完整准备未完成或已有执行，不重放')
-        prepared_path = self.directory/'prepared.json'; prepared = read(prepared_path)
-        need(digest(prepared_path) == approved_sha256 == self.state['prepared_sha256'] and prepared['session_id'] == self.session_id, '完整计划未核对、已变化或不属当前会话')
-        for name,expected in prepared['evidence_sha256'].items():
-            need(digest(Path(name)) == expected, '分支准备证据已变化')
+        checked = self.ready(); need(self.state['stage'] == 'prepared', '两类完整准备未完成或已有执行，不重放')
+        prepared_path = self.directory/'prepared.json'; prepared = checked.json(prepared_path)
+        need(checked.fingerprint(prepared_path) == approved_sha256 == self.state['prepared_sha256'] and prepared['session_id'] == self.session_id, '完整计划未核对、已变化或不属当前会话')
         need(source_check.is_file(), '写前来源证据文件不存在')
-        scope = read(self.manual_scope_path); snapshot = read(source_check)
+        scope = checked.json(self.manual_scope_path); snapshot = read(source_check)
         complete_manual_scope(scope,snapshot)
         manual_prepared = self.manual.directory/'prepared.json'
-        manual_plan = read(manual_prepared)
+        manual_plan = checked.json(manual_prepared)
         check_basis = validate_source_check(scope, manual_plan['source_snapshot'], source_check,
                                             manual_plan['source_sha256'])
         need(not (self.manual.directory/'checkpoint.json').exists(), '手工分支已有执行检查点，不重放')
@@ -765,6 +766,9 @@ class WorkorderBranches:
         need(all(e['session'] == self.session_id and 0 <= time.time()-e['created'] < 25*60
                  for e in self.order.state['generation']['entries'] if e['operation_id'] and not e.get('completed')),
              '订单草稿会话不符或已接近过期')
+        # Discard this validation snapshot before awaiting external work. The
+        # independent order/manual entry points retain their own fresh checks.
+        del checked
         status = await self.call('e10_connection_status')
         need(status.get('ok') and status.get('authenticated') is True, '认证失效，未开始正式开单')
         # One shared writer; no branch is approved here, including zero-order branches.

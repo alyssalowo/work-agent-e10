@@ -15,6 +15,7 @@ import time
 from urllib.parse import urlsplit
 import uuid
 
+from local_evidence import read_json, digest_file, json_text, write_text
 from workorder_sources import is_manual_source
 
 ZERO = '00000000-0000-0000-0000-000000000000'
@@ -39,19 +40,19 @@ def need(condition, message):
 
 
 def read(path):
-    return json.loads(Path(path).read_text(encoding='utf-8-sig'))
+    return read_json(path)
 
 
 def save(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + '.tmp')
-    temp.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    write_text(temp, json_text(value, ensure_ascii=False, indent=2) + '\n')
     temp.replace(path)
 
 
 def digest(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return digest_file(path)
 
 
 def local(base, value):

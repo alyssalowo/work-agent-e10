@@ -1,9 +1,9 @@
 """Bound terminal output while preserving complete local command evidence."""
-import hashlib
 import json
 from pathlib import Path
 import time
 from datetime import datetime, timezone
+from local_evidence import digest_file, json_text, write_text, record
 
 
 FIELDS = '''ok ready phase stage state job error_type document_no complete stopped automatic_retry saved
@@ -19,7 +19,9 @@ remaining_matching_and_picking_gate_required'''.split()
 
 
 def print_json(value):
-    print(json.dumps(value, ensure_ascii=False), flush=True)
+    text = json_text(value, ensure_ascii=False)
+    record(model_output_bytes=len((text+'\n').encode('utf-8')))
+    print(text, flush=True)
 
 
 def compact(value):
@@ -52,10 +54,9 @@ def compact(value):
 
 def write_new(path, value):
     # Exclusive creation: do not overwrite earlier result evidence.
-    text = json.dumps(value, ensure_ascii=False, indent=2) + '\n'
-    with path.open('x', encoding='utf-8', newline='\n') as output:
-        output.write(text)
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    text = json_text(value, ensure_ascii=False, indent=2) + '\n'
+    write_text(path, text, exclusive=True)
+    return digest_file(path)
 
 
 class SessionOutput:

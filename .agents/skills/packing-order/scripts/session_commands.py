@@ -2,11 +2,11 @@
 import argparse
 import copy
 from datetime import date
-import hashlib
 import json
 from pathlib import Path
 import re
 
+from local_evidence import read_bytes, read_json, sha256_bytes, json_bytes
 from jsonschema import Draft202012Validator
 
 
@@ -103,7 +103,7 @@ def local_path(base, name):
 
 
 def read_object(path):
-    value = json.loads(Path(path).read_text(encoding='utf-8-sig'))
+    value = read_json(path)
     if not isinstance(value, dict):
         raise ValueError('JSON文件须包含对象：' + Path(path).name)
     return value
@@ -116,11 +116,11 @@ def resolve_command(value, base):
         return copy.deepcopy(value), None
     validate(value, object_schema({'command_file': TEXT, 'command_sha256': SHA}, ['command_file']), '文件命令入口')
     path = local_path(base, value['command_file'])
-    raw = path.read_bytes()
-    fingerprint = hashlib.sha256(raw).hexdigest()
+    raw = read_bytes(path)
+    fingerprint = sha256_bytes(raw)
     if value.get('command_sha256', fingerprint).lower() != fingerprint:
         raise ValueError('命令文件SHA256已变化；未执行')
-    command = json.loads(raw.decode('utf-8-sig'))
+    command = json_bytes(raw)
     if not isinstance(command, dict) or 'command_file' in command:
         raise ValueError('命令文件须包含单个阶段对象，不允许嵌套文件入口或命令列表')
     return command, {'path': str(path), 'sha256': fingerprint}
