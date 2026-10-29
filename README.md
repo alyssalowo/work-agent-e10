@@ -28,10 +28,17 @@
 
 ```text
 python -m unittest discover -s tests -p "test_*.py" -v
-node tests/test_shipment_submit.cjs
+python -m unittest discover -s .agents/skills/packing-order/tests -p "test_*.py" -v
+node --test tests/test_shipment_submit.cjs tests/test_restricted_sheet_entry.cjs .agents/skills/packing-order/tests/test_sheet_read_plan.cjs .agents/skills/packing-order/tests/test_sheet_read_collect.cjs
 ```
 
 测试只使用合成数据和本地模拟响应，覆盖三来源分表、字段映射、全表去重、接续检查及填写执行器，不连接 E10 或钉钉。通过测试不代表实际业务已完成；正式操作仍须满足原控制器和真实回执门槛。
+
+## 第二轮优化
+
+默认 Sol medium、Terra medium、Luna low，固定校验覆盖的正常数据不做重复模型审计。已加入原始三来源分页证据、销货作废筛选、受限入口离线验证、按需快照采集和任务额度记录。具体开放状态与限制见[第二轮控制门槛](.agents/skills/packing-order/references/round2-controls.md)。
+
+Terra 正式写入仍关闭：当前宿主工具隔离尚未验证。离线回归不代表线上适配或额度节省已验收；真实业务数据不用于技能测试。
 
 ## 同步边界
 

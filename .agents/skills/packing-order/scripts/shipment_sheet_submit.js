@@ -214,16 +214,22 @@ var shipmentSheetSubmit = (() => {
     await persistExclusive('receipt.json',receipt);
     return receipt;
   }
-  async function runWithTools({tools,workDir,planPath,outputDir,progress,persistRaw}) {
+  async function runWithTools({tools,workDir,planPath,outputDir,progress,persistRaw,pythonPath,verifierPath}) {
     need(tools && typeof tools.mcp__node_repl__js==='function' && typeof tools.mcp__dingtalk_sheet__set_range_from_csv==='function' && typeof tools.mcp__dingtalk_sheet__update_range==='function', 'Primary Node REPL and DingTalk sheet callbacks required');
     need(typeof workDir==='string'&&typeof planPath==='string'&&typeof outputDir==='string'&&typeof persistRaw==='function', 'workDir, planPath, outputDir, persistRaw required');
-    const paths={workDir,planPath,outputDir};
+    need(typeof pythonPath==='string' && typeof verifierPath==='string', 'Host-configured Python and fixed source verifier required');
+    const paths={workDir,planPath,outputDir,pythonPath,verifierPath};
     const loadCode=`(async()=>{var fs=await import('node:fs/promises'),path=await import('node:path'),crypto=await import('node:crypto');
       var p=${JSON.stringify(paths)},root=await fs.realpath(p.workDir),planFile=await fs.realpath(p.planPath),rel=path.relative(root,planFile);
       if(!rel||rel.startsWith('..')||path.isAbsolute(rel))throw Error('Plan is outside workDir');
       var plan=JSON.parse(await fs.readFile(planFile,'utf8'));
       if(typeof plan.source_plan_path!=='string'||typeof plan.source_plan_sha256!=='string'||typeof plan.snapshot_path!=='string'||typeof plan.snapshot_sha256!=='string')throw Error('Plan source/snapshot path and SHA bindings required');
       for(var pair of [[plan.source_plan_path,plan.source_plan_sha256],[plan.snapshot_path,plan.snapshot_sha256]]){var f=await fs.realpath(pair[0]),r=path.relative(root,f);if(!r||r.startsWith('..')||path.isAbsolute(r))throw Error('Bound source/snapshot outside workDir');var h=crypto.createHash('sha256').update(await fs.readFile(f)).digest('hex');if(h!==pair[1])throw Error('Bound source/snapshot SHA mismatch');}
+      if(!path.isAbsolute(p.pythonPath)||!path.isAbsolute(p.verifierPath)||path.basename(p.verifierPath)!=='shipment_append_plan.py')throw Error('Absolute host verifier paths required');
+      var child=await import('node:child_process'),util=await import('node:util');
+      var verification=await util.promisify(child.execFile)(p.pythonPath,['-X','utf8',p.verifierPath,'--verify-plan',planFile],{windowsHide:true,timeout:60000,maxBuffer:1048576});
+      var proof=JSON.parse(verification.stdout),planHash=crypto.createHash('sha256').update(await fs.readFile(planFile)).digest('hex');
+      if(proof.ok!==true||proof.plan_sha256!==planHash||JSON.stringify(plan)!==JSON.stringify(JSON.parse(await fs.readFile(planFile,'utf8'))))throw Error('Fresh source verification failed');
       var out=path.resolve(p.outputDir),outParent=path.dirname(out),parentReal=await fs.realpath(outParent),outRel=path.relative(root,parentReal);
       if(outRel.startsWith('..')||path.isAbsolute(outRel))throw Error('Output outside workDir');
       try{await fs.lstat(out);throw Error('Output directory already exists; refuse replay');}catch(e){if(e.code!=='ENOENT')throw e;}

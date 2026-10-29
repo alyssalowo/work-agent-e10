@@ -58,6 +58,7 @@ def to_tsv(rows: list[list[str]]) -> str:
 def convert(raw: dict, expected_sheets: tuple[str, ...] | None = None,
             expected_node_id: str | None = None) -> dict:
     require(isinstance(raw, dict), "原始文件根节点须为对象")
+    require(not raw.get('recovery_blocked') and not raw.get('collection_failures'), '采集失败或恢复待处理，不能生成完整快照')
     target_url = raw.get("target_url")
     require(isinstance(target_url, str) and target_url, "缺少 target_url")
     parsed_url = urlparse(target_url)
@@ -153,12 +154,43 @@ def convert(raw: dict, expected_sheets: tuple[str, ...] | None = None,
     return result
 
 
+def document_index(raw: dict) -> dict:
+    """Validate mixed full/column captures without promoting column data to a snapshot."""
+    require(not raw.get('recovery_blocked') and raw.get('collection_failures') == [], '采集失败或恢复待处理')
+    sheets=raw.get('sheets', [])
+    require(sheets and len({s['name'] for s in sheets})==len(sheets) and len({s['sheet_id'] for s in sheets})==len(sheets), '采集目录缺失或重复')
+    result=[]
+    for sheet in sheets:
+        scope=sheet.get('capture_scope')
+        require(scope in ('full','doc_no_column'), '未知或补查范围不能用于完整去重')
+        if scope=='full':
+            convert({**raw,'sheets':[sheet]})
+            rows=list(csv.reader(StringIO(sheet['response']['csv']),strict=True))
+            require(rows[0].count('单号')==1,'单号表头缺失或重复')
+            col=rows[0].index('单号')
+        else:
+            metadata,response=sheet['metadata'],sheet['response']
+            bounds=metadata['nonEmptyRange']; c1,r1,c2,r2=parse_range(response['returnedRange'])
+            require(c1==c2 and r1==1 and r2==bounds['lastRow'], '单号列范围不完整')
+            require(bounds['range']==f"A1:{bounds['lastColumn']}{bounds['lastRow']}" and bounds['lastCell']==f"{bounds['lastColumn']}{bounds['lastRow']}" and c1<=column_number(bounds['lastColumn']), '原始整表元数据无效')
+            # Validate identity/indices/CSV with a local range metadata view. The
+            # returned index is explicitly column scope, never a business snapshot.
+            scoped={**sheet,'metadata':{**metadata,'nonEmptyRange':{'range':response['returnedRange'],'lastColumn':column_label(c2),'lastRow':r2,'lastCell':f'{column_label(c2)}{r2}'}}}
+            convert({**raw,'sheets':[scoped]})
+            rows=list(csv.reader(StringIO(response['csv']),strict=True));col=0
+            require(rows[0]==['单号'],'单号列表头不符')
+        result.append({'name':sheet['name'],'sheet_id':sheet['sheet_id'],'doc_nos':[r[col] for r in rows[1:] if r[col]],'capture_scope':'doc_no_column','dedup_complete':True})
+    return {'schema_version':1,'node_id':raw['node_id'],'target_url':raw['target_url'],'round_id':raw.get('round_id'),'scope':'document_numbers_only','sheets':result}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw", required=True, type=Path, help="原始普通表格 CSV/metadata JSON")
     parser.add_argument("--out", required=True, type=Path, help="输出快照 JSON")
     parser.add_argument("--sheets", help="可选的授权工作表名称，按原始顺序逗号分隔")
     parser.add_argument("--node-id", help="可选的预期文档 nodeId")
+    parser.add_argument('--doc-index',action='store_true',help='输出经过校验的全表单号目录，不生成业务快照')
+    parser.add_argument('--full-sheets',help='混合采集中需要完整快照的表名，逗号分隔')
     args = parser.parse_args()
     raw_path = args.raw.resolve()
     out_path = args.out.resolve()
@@ -170,17 +202,28 @@ def main() -> int:
         expected_sheets = tuple(part.strip() for part in args.sheets.split(",")) if args.sheets else None
         if expected_sheets is not None:
             require(all(expected_sheets), "--sheets 含空名称")
-        snapshot = convert(raw, expected_sheets, args.node_id)
+            require(not args.doc_index, '--doc-index 不同时使用 --sheets')
+        require(not (args.doc_index and args.full_sheets), '单号目录与完整表选择不能同时使用')
+        if args.doc_index or args.full_sheets:
+            index=document_index(raw)
+            if args.node_id:require(index['node_id']==args.node_id,'文档身份不符')
+            if args.doc_index:snapshot=index
+            else:
+                require(not args.sheets,'--full-sheets 不同时使用 --sheets')
+                names=tuple(args.full_sheets.split(',')); require(all(names) and len(names)==len(set(names)), '完整表名缺失或重复')
+                selected=[next((s for s in raw['sheets'] if s['name']==n and s['capture_scope']=='full'),None) for n in names]
+                require(all(selected), '所选表没有完整采集证据')
+                snapshot=convert({**raw,'sheets':selected},names,args.node_id)
+        else:snapshot = convert(raw, expected_sheets, args.node_id)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        with out_path.open('x',encoding='utf-8') as f:f.write(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n")
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"sheet_snapshot: {error}", file=sys.stderr)
         return 2
     print(json.dumps({
         "ok": True,
         "out": str(out_path),
-        "sheets": [{"name": s["name"], "range": s["range"], "rows": len(s["sheet_mcp"]["row_indices"]),
-                    "columns": len(s["sheet_mcp"]["col_indices"])} for s in snapshot["sheets"]],
+        "sheets": [s['name'] for s in snapshot['sheets']],
     }, ensure_ascii=False))
     return 0
 

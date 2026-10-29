@@ -1,5 +1,6 @@
 """Build a local E10 three-source shipment plan; never performs remote writes."""
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -75,6 +76,10 @@ def build_plan(data, today):
     if not isinstance(modules, list) or not modules or len(set(modules)) != len(modules) or not set(modules) <= MODULES:
         raise ValueError('modules_complete须明确列出已完整收集的模块，零记录模块也须声明')
     rows, sheets = data['records'], data['sheets']
+    approval_options = data.get('sales_approval_options')
+    if any(row.get('module') == 'sales' for row in rows):
+        if not isinstance(approval_options, dict) or not approval_options or any(not isinstance(k, str) or not k or not isinstance(v, str) or not v for k, v in approval_options.items()) or '作废' not in approval_options.values():
+            raise ValueError('销货审核状态须提供真实选项映射并包含作废')
     existing, dated, sheet_ids = set(), {}, set()
     for sheet in sheets:
         if sheet['sheet_id'] in sheet_ids:
@@ -99,6 +104,8 @@ def build_plan(data, today):
         iso_day(row['doc_date']); iso_day(row['expected_date'])
         if row['module'] == 'sales' and row.get('outbound_status') not in STATUSES:
             raise ValueError('出库状态未按真实元数据归一化')
+        if row['module'] == 'sales' and (not isinstance(row.get('approval_status'), str) or row['approval_status'] not in approval_options):
+            raise ValueError('销货审核状态缺失或未知')
         if row['module'] == 'borrow' and type(row.get('borrow_detail_ended')) is not bool:
             raise ValueError('借出明细结束须按真实元数据归一为布尔值')
         if row['module'] != 'sales' and row.get('delivery_label') not in (None, ''):
@@ -116,11 +123,12 @@ def build_plan(data, today):
     for no, detail in groups.items():
         head_keys = ('module', 'doc_date', 'expected_date', 'doc_type_name', 'doc_type_code')
         if any(len({r.get(key) for r in detail}) != 1 for key in head_keys) or (
-                detail[0]['module'] == 'sales' and len({r['outbound_status'] for r in detail}) != 1):
+                detail[0]['module'] == 'sales' and (len({r['outbound_status'] for r in detail}) != 1 or len({r['approval_status'] for r in detail}) != 1)):
             raise ValueError('同单号单头或预计日期不一致: ' + no)
         head = detail[0]
         reason = None
-        if head['module'] == 'sales' and no.startswith(SALES_PREFIXES): reason = 'sales_prefix'
+        if head['module'] == 'sales' and approval_options[head['approval_status']] == '作废': reason = 'sales_void'
+        elif head['module'] == 'sales' and no.startswith(SALES_PREFIXES): reason = 'sales_prefix'
         elif head['module'] == 'borrow' and head['doc_type_name'] in BORROW_EXCLUDED: reason = 'borrow_document_name'
         elif head['module'] == 'outbound_application' and not no.startswith(APPLICATION_PREFIXES): reason = 'outbound_application_prefix'
         elif iso_day(head['doc_date']) < date(2026, 1, 1): reason = 'document_date'
@@ -128,7 +136,10 @@ def build_plan(data, today):
         elif iso_day(head['expected_date']) < today: reason = 'expected_date_past'
         elif no in existing: reason = 'existing_document'
         if reason:
-            dropped_docs.append({'doc_no': no, 'rows': len(detail), 'reason': reason})
+            dropped = {'doc_no': no, 'rows': len(detail), 'reason': reason}
+            if head['module'] == 'sales':
+                dropped.update(module='sales', approval_status=head['approval_status'], approval_label=approval_options[head['approval_status']])
+            dropped_docs.append(dropped)
             if reason == 'existing_document':
                 counts['existing_documents'] += 1; counts['existing_rows'] += len(detail)
             else: counts['other_filtered_rows'] += len(detail)
@@ -148,7 +159,7 @@ def build_plan(data, today):
             if row['module'] == 'borrow' and row['borrow_detail_ended']:
                 rule = 'borrow_detail_ended'
             if not rule and sku.startswith('1-V') and ('S263' in name or 'S630' in name): rule = '1-V_S263_S630'
-            elif sku.startswith('1-H') and 'DSN' in name: rule = '1-H_DSN'
+            if not rule and sku.startswith('1-H') and 'DSN' in name: rule = '1-H_DSN'
             if rule:
                 dropped_details.append({'module': row['module'], 'doc_no': no, 'detail_id': row['detail_id'], 'reason': rule})
                 counts['detail_filtered_rows'] += 1
@@ -186,5 +197,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     payload = json.loads(args.input.read_text(encoding='utf-8-sig'))
     plan = build_plan(payload, args.today)
+    plan['source_binding'] = {'input_path': str(args.input.resolve()),
+                              'input_sha256': hashlib.sha256(args.input.read_bytes()).hexdigest()}
     args.output.write_text(json.dumps(plan, ensure_ascii=False, indent=2, allow_nan=False), encoding='utf-8')
     print(json.dumps(plan['counts'], ensure_ascii=False))

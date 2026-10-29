@@ -40,7 +40,7 @@ description: "将本地领料申请明细按工单匹配，通过官方钉钉MCP
 4. 由主代理按共用MCP契约生成submit-spec、运行一次本地check-before并提交。报告以实际回执为依据；失败/unknown按[停止与恢复](../packing-order/references/performance.md#停止与恢复)，不重放整批。
 5. 逐格报告工作表、行或记录身份、字段、工单、原值、完整结果及本次新增号码；另列缺字段、未匹配和保留原因。不把请求已发出或submitted说成独立持久保存复核。
 
-本地批量委派及接收按[共用分工](../packing-order/references/luna-subagent.md)，正常输出按[执行约定](../packing-order/references/performance.md)。主代理负责正式提交；领料report与提示历史写入也由主代理执行。
+本地批量委派、接收、正式提交及状态更新权限均按[共用分工](../packing-order/references/subagents.md)及其当前开放状态执行，正常输出按[执行约定](../packing-order/references/performance.md)。当前隔离入口未验收，正式提交、领料 report 与提示历史写入由主代理执行。
 
 ## 离线助手
 

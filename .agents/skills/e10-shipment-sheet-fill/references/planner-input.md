@@ -13,11 +13,12 @@ scripts/plan.py直接处理销货、借出和出库申请，不连接ERP或钉�
 | 字段 | 要求 |
 | --- | --- |
 | module | sales / borrow / outbound_application |
-| doc_no、detail_id | 完整单号、模块内唯一稳定明细ID |
+| head_id、doc_no、detail_id | 真实单头ID、完整单号、模块内唯一稳定明细ID |
 | doc_date、expected_date | 严格ISO日期；出库申请expected_date来自真实可发货日期 |
 | doc_type_name、doc_type_code | 筛选前真实名称和代码；借出代码必填，其他可为空 |
 | item_code、item_name | 明细品号、品名字符串 |
 | columns | 真实来源列名和值对象；只允许有限数值、字符串、布尔或null |
+| approval_status | 仅销货必填：原始审核状态代码；依真实元数据映射，作废整单排除，缺失、未知及同单冲突停止 |
 | outbound_status | 仅销货必填：不需出库 / 未出库 / 部分出库 / 出库结束 |
 | borrow_detail_ended | 仅借出必填：按真实“明细结束”元数据归一的JSON布尔值，不接受字符串或0/1 |
 | delivery_label | 销货真实明细标签，空串/null表示空；借出、出库申请只能空或省略 |
@@ -43,3 +44,14 @@ columns保留单头备注和明细备注；非空明细备注、单头备注依�
 输出status:prepared_only、modules_complete、all_modules_complete、每表headers/values/source、missing、剔除清单及counts。values是待转换文本矩阵，source保留真实模块和明细ID。输入行守恒核对已有、单据过滤、明细过滤、待写和缺表，不把缺表算成功。
 
 输出不是正式成功回执，也未授权所有日期表。主代理核对完整范围、缺表和指定写入范围后，再绑定真实文档身份和allowed_write_sheets；完整流程沿用固定追加执行器，日期/数量明确按类型写入，其他标识保留文本。失败或unknown不重复追加。
+
+
+## 追加前的来源证据契约
+
+追加执行器要求显式 `workflow_kind` 和 `scope`。完整流程必须为 `packing_order` 并覆盖 `sales`、`borrow`、`outbound_application`；独立填写使用 `shipment_fill` 和明确模块范围。`source_binding` 指向计划器输入文件和 SHA-256；完整性布尔值不能替代证据。每个模块即使零行也需要原始末页，逐页提供 `source_evidence[module]`，每项包含 `path`、`sha256` 和原始查询请求引用 `request: {path, sha256}`。请求文件格式为 `{name: "e10_query_shipment_details", arguments: {...}}`；请求 `fields` 是 `{alias, path}` 数组，其他参数包括 module、start_row、expected_from、expected_path、status_path、status_end。页与请求的查询参数、日期、模块、页起点、递增关系、终页和单头/明细 ID 都须一致，所有原始行必须与 records 一一对应。计划输出还会从输入重新计算核对。
+
+`field_bindings[module]` 为 `{fields, columns}`：`fields` 使用固定别名 `doc_type_name: DOC_NAME`、`doc_type_code: DOC_CODE`、`item_code: ITEM_CODE`、`item_name: ITEM_DESCRIPTION`；销货另有 `delivery_label: DELIVERY_LABEL`、`outbound_status: ISSUED_STATUS`，借出另有 `borrow_detail_ended: CLOSE`。`columns` 将每个实际来源列名指向原始查询别名；包括业务数量、人员、单头及明细备注等每一输出来源值，不能遗漏或自行填值。所有别名须存在于每页请求和原始行（服务端派生的 `CREATOR_NAME` 可不在请求字段中）；原始值与归一值逐项核对。`HEAD_ID`、`DETAIL_ID`、`DOC_NO`、`DOC_DATE` 的查询路径分别固定为模块单头 ID、模块明细 ID、DOC_NO、DOC_DATE；`EXPECTED_DATE` 路径须等于该模块查询的 expected_path。销货审核、出库状态和借出 CLOSE 的原始路径单独核对。字段别名及其路径必须由实际字段元数据核实，不能凭名称猜测；若真实字段不符合当前契约，先停止并核实适配。
+
+销货输入另须 `sales_approval_options`、`sales_issued_options`，借出须 `borrow_close_options`；值均为原始代码到真实中文标签的映射。对应的 `sales_approval_metadata`、`sales_issued_metadata`、`borrow_close_metadata` 采用 `{path, sha256, pointer}` 引用原始元数据 JSON，pointer 使用 JSON Pointer，定位对象当前须包含 `module`、`field`、`options`，字段身份及全部选项须与输入一致。借出结束由真实 CLOSE 标签“指定结束”或“已结束”归一。销货标签、审核状态和数量及借出 CLOSE 必须原样保留在原始分页中，不能预先过滤作废或结束明细。
+
+元数据回执的真实结构目前尚未验证，上述 pointer 及对象结构是闭锁接口，不表示已经取得线上元数据或确认其可直接使用；实际回执不匹配时必须先明确适配，不能手写合成元数据充当回执。文件哈希只能发现引用文件改变，不能证明文件来自 MCP，也不能证明多页查询期间线上数据未变化。

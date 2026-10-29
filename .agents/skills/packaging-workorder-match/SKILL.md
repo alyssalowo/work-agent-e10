@@ -34,7 +34,7 @@ description: "将本地工单XLSX/TSV/CSV按来源单号、品号、特征码和
 4. 由主代理按共用MCP契约生成submit-spec、运行一次本地check-before并提交。报告以实际回执为依据；失败/unknown按[停止与恢复](../packing-order/references/performance.md#停止与恢复)，不重放整批。
 5. 报告业务行数、实际变更格、重复组及未匹配/冲突/保留原因。不把请求已发出或submitted说成独立持久保存复核。
 
-本地批量委派及接收按[共用分工](../packing-order/references/luna-subagent.md)，正常输出按[执行约定](../packing-order/references/performance.md)。主代理负责正式提交；领料report与提示历史写入也由主代理执行。
+本地批量委派、接收、正式提交及状态更新权限均按[共用分工](../packing-order/references/subagents.md)及其当前开放状态执行，正常输出按[执行约定](../packing-order/references/performance.md)。当前隔离入口未验收，正式提交由主代理执行。
 
 ## 脚本使用
 

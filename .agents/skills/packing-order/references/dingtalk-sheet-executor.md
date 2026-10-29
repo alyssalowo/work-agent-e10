@@ -4,7 +4,7 @@
 
 ### 固定普通表执行器
 
-每轮首次主代理加载packing-order的scripts/sheet_mcp_submit.js，随后复用。只注入已连接官方工具和本地文件工具；子代理不注入正式写入工具。在functions.exec中，skillFile为实际绝对路径：
+每轮首次主代理加载packing-order的scripts/sheet_mcp_submit.js，随后复用。正式写入入口由主代理控制；当前宿主无法通过subagent启动参数证明工具已被隔离，因此不得声称“子代理不具备写入工具”。Terra live write默认关闭；仅在主代理实现的受限入口通过隔离验收后，才可按授权使用。在functions.exec中，skillFile为实际绝对路径：
 
 ```javascript
 const r = await tools.mcp__node_repl__js({
@@ -20,10 +20,10 @@ store('packing-sheet-helper-source',
 
 ```javascript
 const api = Function(load('packing-sheet-helper-source')+';return packingSheetSubmit;')();
-text(await api.collectWithTools({tools,workDir,rawPath,targetUrl,nodeId,sheets}));
+text(await api.collectWithTools({tools,workDir,rawPath,targetUrl,nodeId,sheets,readPlan}));
 ```
 
-sheets为真实{name,sheet_id}列表。各表可并行读取，单表先元数据后完整CSV；全部完成才汇总。小结果一次落盘，大结果按完整工具代码UTF8不超过48KiB分块，顺序写独占.partial后独占发布；已有final/partial拒绝覆盖，失败保留partial且不自动重试；异常时读[落盘恢复](dingtalk-mcp-recovery.md#普通表采集与提交)。采集成功仍必须运行sheet_snapshot.py，snapshot_validation_required不表示验证通过。
+sheets为真实{name,sheet_id}列表。readPlan 由[按需读取计划器](sheet-read-plan.md)依据真实目录、边界和表头生成；省略时保留旧版全表读取。各表可并行读取，单表先元数据后实际计划范围 CSV；全部完成才汇总。完整快照与单号目录分别转换，禁止把单号列提升为完整业务快照。小结果一次落盘，大结果按完整工具代码UTF8不超过48KiB分块，顺序写独占.partial后独占发布；已有final/partial拒绝覆盖，失败保留partial且不自动重试；异常时读[落盘恢复](dingtalk-mcp-recovery.md#普通表采集与提交)。采集成功仍必须运行sheet_snapshot.py，snapshot_validation_required不表示验证通过。
 
 现有格匹配提交：
 

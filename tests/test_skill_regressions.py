@@ -20,6 +20,7 @@ plan = load('shipment_plan', SKILLS / 'e10-shipment-sheet-fill/scripts/plan.py')
 review = load('local_review', SKILLS / 'packing-order/scripts/local_review.py')
 append = load('shipment_append_plan', SKILLS / 'packing-order/scripts/shipment_append_plan.py')
 routing = load('workorder_sources', SKILLS / 'packing-order/scripts/workorder_sources.py')
+evidence_fixture = load('evidence_fixture', ROOT / 'tests/test_source_evidence.py')
 
 def row(module='sales', **changes):
     value = dict(module=module, doc_no={'sales':'2301-001','borrow':'1902-001',
@@ -27,7 +28,7 @@ def row(module='sales', **changes):
                  doc_date='2026-10-29', expected_date='2026-10-31',
                  doc_type_name='真实类型', doc_type_code='1902' if module=='borrow' else '2301',
                  item_code='1-V001', item_name='正常成品', columns={})
-    if module=='sales': value.update(outbound_status='未出库', delivery_label='S1')
+    if module=='sales': value.update(outbound_status='未出库', delivery_label='S1',approval_status='A')
     if module=='borrow': value['borrow_detail_ended']=False
     value.update(changes)
     return value
@@ -39,7 +40,7 @@ def sheet(day, **changes):
     return value
 
 def payload(rows, days=('2026-10-29','2026-10-30','2026-10-31')):
-    return dict(records_complete=True, sheets_complete=True,
+    return dict(records_complete=True, sheets_complete=True,sales_approval_options={'A':'已审核','X':'作废'},
                 modules_complete=sorted(plan.MODULES), records=rows, sheets=[sheet(d) for d in days])
 
 def build(value): return plan.build_plan(value, '2026-10-29')
@@ -210,6 +211,12 @@ class EvidenceTests(unittest.TestCase):
                 self.workorders(lambda p:p['rows'][0].update(STATUS=status))
 
 class AppendTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(); self.root=Path(self.temp.name)
+    def tearDown(self): self.temp.cleanup()
+    def save(self,name,value):
+        path=self.root/name;path.write_text(json.dumps(value,ensure_ascii=False),encoding='utf-8')
+        return {'path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
     def test_shared_manual_source_prefixes(self):
         for no in ('1902-001','1018-001','1008-001','1012-001'):
             self.assertTrue(routing.is_manual_source(no),no)
@@ -217,9 +224,13 @@ class AppendTests(unittest.TestCase):
             self.assertFalse(routing.is_manual_source(no),no)
     def fixture(self,header):
         headers=['预计发货日期',header]
-        source={'status':'prepared_only','node_id':'n','allowed_write_sheets':['s'],
-                'sheets':[{'name':'s','sheet_id':'id','headers':headers,'values':[['2026-10-31','1.25']],
-                           'source':[{'detail_id':'d'}]}]}
+        options={'A':'已审核','X':'作废'}
+        record=row(head_id='h',detail_id='d',delivery_label='',columns={'销货明细_业务数量':'1.25'})
+        data=payload([record],days=('2026-10-31',));data['sheets'][0].update(name='s',sheet_id='id',headers=headers)
+        data.update(workflow_kind='shipment_fill',scope=['sales'],modules_complete=['sales'],sales_approval_options=options)
+        evidence_fixture.add_evidence(data,self.save)
+        ref=self.save('input.json',data);source=plan.build_plan(data,'2026-10-29')
+        source.update(node_id='n',allowed_write_sheets=['s'],source_binding={'input_path':ref['path'],'input_sha256':ref['sha256']})
         snapshot={'schema_version':1,'ok':True,'complete':True,'transport':'dingtalk_sheet','node_id':'n',
                   'target_url':'https://alidocs.dingtalk.com/i/nodes/n',
                   'sheets':[{'name':'s','sheet_id':'id','scope_complete':True,'range':'A1:B1','tsv':'\t'.join(headers)+'\n'}]}
@@ -227,11 +238,27 @@ class AppendTests(unittest.TestCase):
     def test_both_quantity_headers_supported(self):
         for header in ('销货明细_业务数量','借出明细_业务数量'):
             src,snap=self.fixture(header)
-            self.assertIn(header,append.build(src,snap,['s'])['requests'][0]['type_columns'])
+            self.assertIn(header,append.build(src,snap,['s'],'shipment_fill',['sales'])['requests'][0]['type_columns'])
     def test_identity_and_authorization_preserved(self):
         src,snap=self.fixture('销货明细_业务数量')
-        with self.assertRaises(ValueError):append.build(src,snap,['other'])
+        with self.assertRaises(ValueError):append.build(src,snap,['other'],'shipment_fill',['sales'])
         snap['node_id']='other'
-        with self.assertRaises(ValueError):append.build(src,snap,['s'])
+        with self.assertRaises(ValueError):append.build(src,snap,['s'],'shipment_fill',['sales'])
+    def bound_plan(self):
+        src,snap=self.fixture('销货明细_业务数量')
+        source_ref=self.save('source.json',src);snapshot_ref=self.save('snapshot.json',snap)
+        result=append.build(src,snap,['s'],'shipment_fill',['sales'])
+        result.update(source_plan_path=source_ref['path'],source_plan_sha256=source_ref['sha256'],snapshot_path=snapshot_ref['path'],snapshot_sha256=snapshot_ref['sha256'])
+        return Path(self.save('append.json',result)['path'])
+    def test_fresh_append_verifier_rebuilds_and_rejects_altered_plan(self):
+        path=self.bound_plan()
+        self.assertEqual(append.verify(path),{'ok':True,'plan_sha256':append.digest(path)})
+        obj=json.loads(path.read_text(encoding='utf8'));obj['requests'][0]['values'][0][1]='8'
+        path.write_text(json.dumps(obj),encoding='utf8')
+        with self.assertRaises(ValueError):append.verify(path)
+    def test_fresh_append_verifier_rechecks_original_pages(self):
+        path=self.bound_plan()
+        page=self.root/'sales.json';page.write_text('{}',encoding='utf8')
+        with self.assertRaises(ValueError):append.verify(path)
 
 if __name__=='__main__':unittest.main()

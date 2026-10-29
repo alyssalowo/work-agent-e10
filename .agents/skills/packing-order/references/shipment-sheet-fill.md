@@ -8,11 +8,11 @@
 - 计划器的销货/借出/出库申请适用边界见该技能输入说明；本页不覆盖或补造其输入。填写阶段S263/S630与后续建单S263/L630分别沿用各自规则。
 - 出库申请单来自“维护出库申请单”，单号必须以`1018`、`1008`或`1012`之一开头；`可发货日期`对应目标列`预计发货日期`，`出库申请明细`对应目标实际表头的`销货明细`/`借出明细`同名后缀，`申请人员`对应`业务员`，其他按表头对应。通用日期起点、全表单号去重和明细剔除沿用填写技能；分表按实际可发货日期当天，不套用销货交付标签提前、销货状态或借出明细结束条件。
 - 销货单按真实审核状态和选项元数据排除审核状态为“作废”的整张单据及其全部明细；此条件只用于销货单，不套用借出单。审核状态缺失、无法识别或同单不一致时列为异常，不推断为非作废。保留原始来源及排除依据，不改动表中已有记录。
-- 现有销货计划器不读取审核状态：先对完整销货来源按上述条件筛选，再将可确认非作废的完整单据及其全部原始明细交给计划器；保留作废单和异常单的筛选记录，不能把筛选后的输入当作完整原始来源，也不能遗漏其排除统计。
+- 固定计划器读取实际审核选项元数据和完整销货来源，在程序内排除作废整单并保留单据、明细、数量及原因。不得预先删掉作废行再冒充完整原始来源；审核状态缺失、未知或同单冲突均阻断。此规则不扩展到借出和出库申请。
 
 ## 读取、提交与交接
 
-1. 复用packing-order同一E10会话完整读取三个模块。去重按[钉钉快照生命周期](dingtalk-mcp.md#快照生命周期)只采全部工作表的真实表头和完整“单号”列，目标表另取追加所需表头及末行元数据；后续确有完整匹配或整轮交接需要时才读对应指定表完整业务快照。只做第1步时不为未来阶段预读整表；固定追加助手若需完整快照，应在全部模块能力及本地计划已准备、确认存在待追加行后，仅补采对应目标表，不扩展到仅供去重的其他表。本页只补充新明细追加特例。其他表参与去重不产生下游写入授权，会话在整轮结束统一退出。
+1. 复用packing-order同一E10会话完整读取三个模块。去重按[钉钉快照生命周期](dingtalk-mcp.md#快照生命周期)与[按需采集](sheet-read-plan.md)：完整流程对明确需要后续匹配的目标表一次完整采集，其他表只采完整“单号”列；独立填写先采全部表单号列，确有新增时才补采目标表完整快照。只做第1步时不为未来阶段预读整表；固定追加助手若需完整快照，应在全部模块能力及本地计划已准备、确认存在待追加行后，仅补采对应目标表，不扩展到仅供去重的其他表。本页只补充新明细追加特例。其他表参与去重不产生下游写入授权，会话在整轮结束统一退出。
 2. 本阶段保留完整原始单据/明细、去重目录、真实目标表头和源字段映射；查询日及筛选按填写技能固定。
 3. 首次追加前完成三个模块全部候选的筛选、日期分配和字段映射。保留原表头、原行及流程列；无真实来源的包装工单、领料号等列留空。一次核对文档/表身份、完整去重范围、拟写空白范围和全部计划；用官方电子表格MCP追加，保存started、明确A1范围、完整values、明细ID、原始请求与实际回执，不套用只更新现有格的匹配提交契约。
 4. 全部计划写入明确成功（或完整筛选结果明确零新增）后才进入工单阶段。失败、部分成功或unknown先停止依赖操作，按原异常规则查清实际结果，不能重放追加。已按规则暂缓的缺表、范围外或数据异常记录不计成功、不进入本次下游；报告原因后其余成功范围可继续。
@@ -25,20 +25,20 @@
 
 上文第3步使用以下固定入口，不再将所有列经字符串接口提交后直接记完成。单号、来源号、品号、特征码等保持文本；预计发货日期为日期数值，销货明细_业务数量为数值。用户已手工转换的数据不自动重写。
 
-完整审计后的source-plan须有三模块完整原始证据及all_modules_complete=true，并包含status=prepared_only、allowed_write_sheets及各表真实headers/values/source明细ID；使用完整快照绑定真实追加行号：
+source-plan 须绑定原始输入、每一页真实查询请求和响应、字段映射及状态选项元数据文件的路径/哈希。`source_evidence.py` 校验分页链、固定查询范围、原始全部明细与归一化字段一致，并重新运行计划器核对整个输出；`all_modules_complete=true` 不能代替这些证据。完整流程显式使用 `packing_order` 与三个来源，独立填写使用 `shipment_fill` 与明确限定来源。输入格式见[填写输入说明](../../e10-shipment-sheet-fill/references/planner-input.md)；元数据适配未得到真实响应支持时停止，不猜选项。计划还须包含 status=prepared_only、allowed_write_sheets 及真实 headers/values/source 明细ID；使用完整快照绑定真实追加行号：
 
 ```text
-python scripts/shipment_append_plan.py --source-plan 本轮已审计填写计划.json --snapshot 本轮完整快照.json --sheets 本次授权表名逗号分隔 --out 本轮typed-append-plan.json
+python scripts/shipment_append_plan.py --source-plan 本轮已审计填写计划.json --snapshot 本轮完整快照.json --sheets 本次授权表名逗号分隔 --workflow-kind packing_order --scope sales,borrow,outbound_application --out 本轮typed-append-plan.json
 ```
 
 主代理加载scripts/shipment_sheet_submit.js的shipmentSheetSubmit和既有sheet_mcp_submit.js的packingSheetSubmit，调用：
 
 ```javascript
 await shipmentSheetSubmit.runWithTools({tools,workDir,planPath,outputDir,progress,
-  persistRaw:packingSheetSubmit.persistRawWithTools});
+  persistRaw:packingSheetSubmit.persistRawWithTools,pythonPath,verifierPath});
 ```
 
-outputDir为本轮工作目录内全新目录。执行器先完整校验，再用set_range_from_csv(autoConvert=false,allowOverwrite=false)写入文本矩阵，仅转换真实表头预计发货日期及业务数量（销货明细_业务数量或借出明细_业务数量，只允许唯一一列）。日期严格校验ISO日期并计算电子表格日期序号，设置yyyy-mm-dd；数量校验十进制数值，设置General。其他列不推断类型。文本以等号开头、日期非法或数值超出精度时在任何写入前停止。
+pythonPath 与 verifierPath 由宿主配置为可信固定程序的绝对路径，后者必须是 shipment_append_plan.py，不接受子代理提供的替代验证器。执行器在任何表格写入前调用 `--verify-plan`，重新读取原始来源、快照并重建完整追加计划；证据变化或计划被修改即阻断。此检查是本地文件复验，不是线上原子条件更新。outputDir为本轮工作目录内全新目录。执行器先完整校验，再用set_range_from_csv(autoConvert=false,allowOverwrite=false)写入文本矩阵，仅转换真实表头预计发货日期及业务数量（销货明细_业务数量或借出明细_业务数量，只允许唯一一列）。日期严格校验ISO日期并计算电子表格日期序号，设置yyyy-mm-dd；数量校验十进制数值，设置General。其他列不推断类型。文本以等号开头、日期非法或数值超出精度时在任何写入前停止。
 
 started独占保存完整操作计划。任一步失败或unknown即停，不重放追加；仅文本写入、类型转换和格式步骤全部明确成功才进入工单阶段。交接投影须保留完整阶段回执，正常不做写后整表读回。
 

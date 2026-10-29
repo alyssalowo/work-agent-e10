@@ -237,7 +237,35 @@ var packingSheetSubmit = (() => {
     };
     return run(input, {updateRange: request => tools.mcp__dingtalk_sheet__update_range(request), persistBatch, progress});
   }
-  async function collectWithTools({tools,workDir,rawPath,targetUrl,nodeId,sheets,maxChars=200000}) {
+  function parseCsv(text) {
+    need(typeof text==='string','Missing CSV');
+    const rows=[]; let row=[], value='', quoted=false, after=false, atStart=true;
+    for(let i=0;i<text.length;i++) {
+      const ch=text[i];
+      if(quoted) { if(ch==='"') { if(text[i+1]==='"') {value+='"';i++;} else {quoted=false;after=true;} } else value+=ch; continue; }
+      if(ch==='"') { need(atStart && !after,'Invalid CSV quote');quoted=true;atStart=false; }
+      else if(ch===',') {row.push(value);value='';atStart=true;after=false;}
+      else if(ch==='\n'||ch==='\r') {if(ch==='\r' && text[i+1]==='\n')i++;row.push(value);rows.push(row);row=[];value='';atStart=true;after=false;}
+      else {need(!after,'Invalid CSV suffix');value+=ch;atStart=false;}
+    }
+    need(!quoted,'Unclosed CSV quote'); if(row.length || value || !atStart || after){row.push(value);rows.push(row);} return rows;
+  }
+  function validateCapturedSheet(row, scope) {
+    need(row && row.name===scope.name && row.sheet_id===scope.sheet_id, 'Captured sheet identity mismatch');
+    const m=row.metadata, r=row.response;
+    need(m?.success===true && m.id===scope.sheet_id && m.name===scope.name && m.nonEmptyRange?.range===scope.full_range, 'Captured metadata mismatch');
+    const full=/^A1:([A-Z]+)([1-9]\d*)$/.exec(scope.full_range), bounds=/^([A-Z]+)([1-9]\d*):([A-Z]+)([1-9]\d*)$/.exec(scope.range);
+    need(full && bounds && m.nonEmptyRange.lastColumn===full[1] && m.nonEmptyRange.lastRow===Number(full[2]) && m.nonEmptyRange.lastCell===full[1]+full[2], 'Invalid metadata bounds');
+    const c1=colNumber(bounds[1]),c2=colNumber(bounds[3]),r1=Number(bounds[2]),r2=Number(bounds[4]);
+    need(c1<=c2 && r1<=r2 && c2<=colNumber(full[1]) && r2<=Number(full[2]),'Invalid requested range');
+    need(r?.success===true && r.hasMore===false && Array.isArray(r.truncationReasons) && r.truncationReasons.length===0 && r.returnedRange===scope.range,'Incomplete range receipt');
+    const cols=Array.from({length:c2-c1+1},(_,i)=>letters(c1+i)), rows=Array.from({length:r2-r1+1},(_,i)=>r1+i);
+    need(JSON.stringify(r.colIndices)===JSON.stringify(cols) && JSON.stringify(r.rowIndices)===JSON.stringify(rows),'Range indices incomplete');
+    const matrix=parseCsv(r.csv);need(matrix.length===rows.length && matrix.every(x=>x.length===cols.length),'CSV dimensions incomplete');
+    if(scope.range===scope.full_range) need(new Set(matrix[0]).size===matrix[0].length,'Duplicate headers');
+    return true;
+  }
+  async function collectWithTools({tools,workDir,rawPath,targetUrl,nodeId,sheets,maxChars=200000,readPlan}) {
     need(Array.isArray(sheets) && sheets.length && new Set(sheets.map(s=>s.name)).size===sheets.length, 'Explicit unique sheet scope required');
     need(new Set(sheets.map(s=>s.sheet_id)).size===sheets.length && sheets.every(s=>s.name && s.sheet_id), 'Real unique sheet IDs required');
     const urlNode=/\/i\/nodes\/([^/?#]+)/.exec(targetUrl || '');
@@ -249,32 +277,53 @@ var packingSheetSubmit = (() => {
       try{await cf.lstat(dest);throw Error('Raw output already exists');}catch(e){if(e.code!=='ENOENT')throw e;}
       try{await cf.lstat(dest+'.partial');throw Error('Raw partial output already exists');}catch(e){if(e.code!=='ENOENT')throw e;}`,title:'采集前检查原始文件路径'});
     need(!outputCheck.isError,'Raw output preflight failed; no online read was started');
-    const started=Date.now(), raw={target_url:targetUrl,captured_at:new Date().toISOString(),sheets:[]};
-    const results=await Promise.allSettled(sheets.map(async s=>{
-      const tick=Date.now();
+    if(readPlan) {
+      need(readPlan.document?.target_url===targetUrl && readPlan.document?.node_id===nodeId && typeof readPlan.round_id==='string' && Array.isArray(readPlan.actions), 'Read plan identity mismatch');
+      need(readPlan.actions.every(a=>sheets.some(s=>s.sheet_id===a.sheet_id && s.name===a.sheet_name)), 'Read plan sheet identity mismatch');
+      need((readPlan.recovery_blocked===true && readPlan.status==='recovery_blocked' && readPlan.actions.length>0 && readPlan.actions.every(a=>a.action==='recheck_range')) || (readPlan.recovery_blocked===false && readPlan.status==='ready' && readPlan.actions.every(a=>a.action!=='recheck_range')), 'Invalid recovery status');
+      if(!readPlan.recovery_blocked) need(readPlan.actions.length===sheets.length && new Set(readPlan.actions.map(a=>a.sheet_id)).size===sheets.length, 'Incomplete planned scope');
+    }
+    const started=Date.now(), raw={target_url:targetUrl,node_id:nodeId,round_id:readPlan?.round_id,recovery_blocked:readPlan?.recovery_blocked===true,captured_at:new Date().toISOString(),sheets:[]};
+    const actions=readPlan ? readPlan.actions : sheets.map(s=>({action:'read_full',sheet_id:s.sheet_id,sheet_name:s.name}));
+    const results=await Promise.allSettled(actions.map(async action=>{
+      const s=sheets.find(x=>x.sheet_id===action.sheet_id), tick=Date.now();
+      need(['read_full','read_doc_no_column','reuse_full_snapshot','recheck_range'].includes(action.action),'Unknown read action');
+      if(action.action==='reuse_full_snapshot') {
+        need(action.cache?.path && action.cache?.sha256,'Missing raw cache binding');
+        const reply=await tools.mcp__node_repl__js({code:`var cf=await import('node:fs/promises');var cc=await import('node:crypto');var b=await cf.readFile(${JSON.stringify(action.cache.path)});if(cc.createHash('sha256').update(b).digest('hex')!==${JSON.stringify(action.cache.sha256)})throw Error('Cached capture changed');nodeRepl.write(b.toString('utf8'));`,title:'验证同轮原始采集文件'});
+        need(!reply.isError,'Cache read failed');
+        const cached=JSON.parse(reply.content.filter(x=>x.type==='text').map(x=>x.text).join('\n'));
+        need(!cached.recovery_blocked && cached.round_id===readPlan.round_id && cached.target_url===targetUrl && cached.node_id===nodeId && Array.isArray(cached.collection_failures) && cached.collection_failures.length===0,'Cache document mismatch');
+        const hits=cached.sheets.filter(x=>x.sheet_id===s.sheet_id);need(hits.length===1,'Cache sheet missing');
+        validateCapturedSheet(hits[0],{name:s.name,sheet_id:s.sheet_id,range:action.range,full_range:action.range});
+        return {...hits[0],capture_scope:'full',cache:action.cache};
+      }
       const metadata=responseValue(await tools.mcp__dingtalk_sheet__get_sheet({nodeId,sheetId:s.sheet_id}));
       need(metadata.success===true && metadata.name===s.name && metadata.id===s.sheet_id,'Sheet metadata identity mismatch');
-      const range=metadata.nonEmptyRange?.range;
-      need(/^A1:[A-Z]+[1-9]\d*$/.test(range||''),'Explicit nonempty A1 metadata range required');
+      const full=metadata.nonEmptyRange?.range;
+      need(/^A1:[A-Z]+[1-9]\d*$/.test(full||''),'Explicit nonempty A1 metadata range required');
+      const range=readPlan ? (action.action==='recheck_range' && !action.range.includes(':') ? `${action.range}:${action.range}` : action.range) : full;
+      if(action.action==='read_full')need(range===full,'Planned full range changed');
+      if(action.action==='read_doc_no_column')need(typeof action.doc_no_column==='string' && range===`${action.doc_no_column}1:${action.doc_no_column}${metadata.nonEmptyRange.lastRow}`, 'Document number scope must be one complete column');
       const response=responseValue(await tools.mcp__dingtalk_sheet__get_range_as_csv({nodeId,sheetId:s.sheet_id,range,annotateRowNumbers:false,maxChars}));
-      return {name:s.name,sheet_id:s.sheet_id,metadata,response,elapsed_seconds:(Date.now()-tick)/1000};
+      const row={name:s.name,sheet_id:s.sheet_id,metadata,response,capture_scope:action.action==='read_full'?'full':action.action==='read_doc_no_column'?'doc_no_column':'recheck_range',elapsed_seconds:(Date.now()-tick)/1000};
+      validateCapturedSheet(row,{name:s.name,sheet_id:s.sheet_id,range,full_range:full});
+      if(action.action==='read_doc_no_column')need(parseCsv(response.csv)[0][0]==='单号','Document number column header differs');
+      return row;
     }));
     const failures=[];
     results.forEach((result,i)=>{
-      if(result.status==='fulfilled') {
-        const row=result.value;raw.sheets.push(row);
-        if(row.response.success!==true || row.response.hasMore!==false || row.response.returnedRange!==row.metadata.nonEmptyRange.range)
-          failures.push({sheet:row.name,reason:'CSV incomplete, failed or range changed'});
-      } else failures.push({sheet:sheets[i].name,reason:String(result.reason?.message||result.reason)});
+      if(result.status==='fulfilled') raw.sheets.push(result.value);
+      else failures.push({sheet:actions[i].sheet_name,reason:String(result.reason?.message||result.reason)});
     });
     raw.collection_failures=failures;
     const data=JSON.stringify(raw);
     await persistRawWithTools({tools,rawPath,data});
-    return {ok:failures.length===0,phase:'sheet_collect',raw_file:rawPath,
+    return {ok:failures.length===0 && !readPlan?.recovery_blocked,phase:'sheet_collect',status:readPlan?.recovery_blocked?'recovery_blocked':failures.length?'failed':'collected',raw_file:rawPath,
       elapsed_seconds:(Date.now()-started)/1000,failures,
-      sheets:raw.sheets.map(s=>({name:s.name,sheet_id:s.sheet_id,range:s.metadata.nonEmptyRange.range})),
+      sheets:raw.sheets.map(s=>({name:s.name,sheet_id:s.sheet_id,range:s.response.returnedRange,capture_scope:s.capture_scope})),
       snapshot_validation_required:true};
   }
-  return {buildRequests, run, runWithTools, collectWithTools, persistRawWithTools};
+  return {buildRequests, run, runWithTools, collectWithTools, persistRawWithTools, validateCapturedSheet};
 })();
 if (typeof module === 'object') module.exports = packingSheetSubmit;
