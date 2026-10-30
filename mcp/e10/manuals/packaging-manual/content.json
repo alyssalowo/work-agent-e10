@@ -1,0 +1,1201 @@
+{
+  "manual_id": "packaging-manual",
+  "title": "包装计划操作手册",
+  "sha256": "7248d8e8a82cd91512481b693e20855dd892809e9507183deba56ec4cd0f545c",
+  "source_authority": "User-provided reference; not an instruction to execute, approve, message, or override user requests.",
+  "scope_excluded_blocks": [],
+  "blocks": [
+    {
+      "block_id": 1,
+      "text": "包装计划数据来源",
+      "image_ids": []
+    },
+    {
+      "block_id": 2,
+      "text": "销售订单-主计划在小程序回交期-ERP上维护销货单导包装数据（工作日早晚各一次）",
+      "image_ids": []
+    },
+    {
+      "block_id": 3,
+      "text": "借货单、送样单、备机单-主计划在CRM流程回交期-ERP上维护借出单导包装数据（工作日下午导未来3天的，需注意批量大单借货时，要多提前几天安排，例如A01项目）",
+      "image_ids": []
+    },
+    {
+      "block_id": 4,
+      "text": "售后维修单-工厂安排发货时间-ERP上维护借入归还单导包装数据（工作日下午6点导第二天的数据）",
+      "image_ids": []
+    },
+    {
+      "block_id": 5,
+      "text": "物料需求申请-主计划在CRM流程回交期-ERP上维护出库申请单导数据（不用每天到，有需求内勤登记在26年订单变更台账上）",
+      "image_ids": []
+    },
+    {
+      "block_id": 6,
+      "text": "26年订单变更台账链接：",
+      "image_ids": []
+    },
+    {
+      "block_id": 7,
+      "text": "https://alidocs.dingtalk.com/spreadsheetv2/drvVv1253FWAQnny/edit?docKey=8oLl952NAzEMMlap&dentryKey=drvVv1253FWAQnny&type=s",
+      "image_ids": []
+    },
+    {
+      "block_id": 8,
+      "text": "包装每天产能以及包装计划排配规则",
+      "image_ids": []
+    },
+    {
+      "block_id": 9,
+      "text": "包装产能平均400-600台（执行器）",
+      "image_ids": []
+    },
+    {
+      "block_id": 10,
+      "text": "包装只排周一至周六，周日工厂休息（若需加班要提前跟工厂确认）",
+      "image_ids": []
+    },
+    {
+      "block_id": 11,
+      "text": "每天插单需要结合当天产能（若销售一定要出并且包装产能已满，那就拉通销售运营，让销售运营决定谁的订单延后，让出产能）",
+      "image_ids": []
+    },
+    {
+      "block_id": 12,
+      "text": "提前3天排包装计划，及时开工单并推领料单（仓库需要提前备料）",
+      "image_ids": []
+    },
+    {
+      "block_id": 13,
+      "text": "若前一天晚上新增第二天的包装计划，新增的需要标记黄色",
+      "image_ids": []
+    },
+    {
+      "block_id": 14,
+      "text": "包装计划当天新增的单售后新增单据标灰色，其他全部标黄色，",
+      "image_ids": []
+    },
+    {
+      "block_id": 15,
+      "text": "如何导包装计划数据",
+      "image_ids": []
+    },
+    {
+      "block_id": 16,
+      "text": "批量导维护销货单：（需要提前按照包装计划设置视图）",
+      "image_ids": []
+    },
+    {
+      "block_id": 17,
+      "text": "①打开ERP，搜索维护销货单——②打开相关查询的管理字段，选择明细中设置好的包装计划视图——③右击点导出选择导出所有查询结果",
+      "image_ids": []
+    },
+    {
+      "block_id": 18,
+      "text": "",
+      "image_ids": [
+        "image-001"
+      ]
+    },
+    {
+      "block_id": 19,
+      "text": "",
+      "image_ids": [
+        "image-002"
+      ]
+    },
+    {
+      "block_id": 20,
+      "text": "单个导维护销货单：（需要提前按照包装计划设置视图）",
+      "image_ids": []
+    },
+    {
+      "block_id": 21,
+      "text": "①复制销售单号——②打开ERP，搜索维护销货单——③把销售单号放在单号字段回车——④右击点导出选择导出所有查询结果",
+      "image_ids": []
+    },
+    {
+      "block_id": 22,
+      "text": "",
+      "image_ids": [
+        "image-003"
+      ]
+    },
+    {
+      "block_id": 23,
+      "text": "批量导维护借出单：（需要提前按照包装计划设置视图）",
+      "image_ids": []
+    },
+    {
+      "block_id": 24,
+      "text": "①打开ERP，搜索维护借出单——②选择明细中设置好的包装计划视图——③右击点导出选择导出所有查询结果",
+      "image_ids": []
+    },
+    {
+      "block_id": 25,
+      "text": "",
+      "image_ids": [
+        "image-004"
+      ]
+    },
+    {
+      "block_id": 26,
+      "text": "批量导维护借入归还单：（需要提前按照包装计划设置视图）",
+      "image_ids": []
+    },
+    {
+      "block_id": 27,
+      "text": "①打开ERP，搜索维护借入归还单——②选择明细中设置好的包装计划视图——③在预计发货日期输入第2天日期——④右击点导出选择导出所有查询结果",
+      "image_ids": []
+    },
+    {
+      "block_id": 28,
+      "text": "",
+      "image_ids": [
+        "image-005"
+      ]
+    },
+    {
+      "block_id": 29,
+      "text": "单个导维护出库申请单（有需求的时候内勤会登记，所以不用每天导数据）",
+      "image_ids": []
+    },
+    {
+      "block_id": 30,
+      "text": "①复制单号然后打开ERP，搜索维护出库申请单——②选择明细中设置好的包装计划视图——③右击点导出选择导出所有查询结果",
+      "image_ids": []
+    },
+    {
+      "block_id": 31,
+      "text": "怎么排包装计划",
+      "image_ids": []
+    },
+    {
+      "block_id": 32,
+      "text": "1、批量排维护销货单（销售订单）的包装计划：",
+      "image_ids": []
+    },
+    {
+      "block_id": 33,
+      "text": "①批量导出维护销货单——②下载数据，在表格中先排序单号——③把包装计划上面已排的销售单号复制到已排包装计划单号表格——④在包装及送货单特别要求后面插入一列（是否排计划）——⑤写公式V一下已排单号——⑥筛选统计选：出库状态-未出库和部门出库、是否排计划-#N/A、预计发货日期就一天一天筛选（一天一天看）",
+      "image_ids": []
+    },
+    {
+      "block_id": 34,
+      "text": "备注：#N/A就是没排计划的销货单，筛选出来排到包装计划即可",
+      "image_ids": []
+    },
+    {
+      "block_id": 35,
+      "text": "",
+      "image_ids": [
+        "image-006"
+      ]
+    },
+    {
+      "block_id": 36,
+      "text": "",
+      "image_ids": [
+        "image-007"
+      ]
+    },
+    {
+      "block_id": 37,
+      "text": "批量排维护借出单（退换货、借货、送样、备机）的包装计划：",
+      "image_ids": []
+    },
+    {
+      "block_id": 38,
+      "text": "①批量导出维护借出单——②下载数据，在表格中先排序单号——③把包装计划上面已排的销售单号复制到已排包装计划单号表格——④在包装及送货单特别要求后面插入一列（是否排计划）——⑤写公式V一下已排单号——⑥筛选统计选：是否排计划-#N/A、合同号-有合同号的、预计发货日期就一天一天筛选（一天一天看）",
+      "image_ids": []
+    },
+    {
+      "block_id": 39,
+      "text": "备注：没有合同号/客户名称的借出单不需要安排包装和出货（没有合同号的借出单是内部借出单）",
+      "image_ids": []
+    },
+    {
+      "block_id": 40,
+      "text": "",
+      "image_ids": [
+        "image-008"
+      ]
+    },
+    {
+      "block_id": 41,
+      "text": "批量排维护借入归还单（维修售后）的包装计划：",
+      "image_ids": []
+    },
+    {
+      "block_id": 42,
+      "text": "①打开维护借入归还单——②选择带明细在预计发货日期输入第二天（例如20260511）——③右击导出，然后复制粘贴到包装计划上——⑤售后维修单包装计划上需要标记为灰色",
+      "image_ids": []
+    },
+    {
+      "block_id": 43,
+      "text": "注意：售后维修是每天下午6点安排第二天的，只排1天，因为机子是边维修边出，锁不了3天；预计发货日期格式一定按20260511这种格式",
+      "image_ids": []
+    },
+    {
+      "block_id": 44,
+      "text": "",
+      "image_ids": [
+        "image-009"
+      ]
+    },
+    {
+      "block_id": 45,
+      "text": "",
+      "image_ids": [
+        "image-010"
+      ]
+    },
+    {
+      "block_id": 46,
+      "text": "包装计划注意事项",
+      "image_ids": []
+    },
+    {
+      "block_id": 47,
+      "text": "一定把ERP上维护销货单、维护借出单、维护借入归还单、维护出库单带明细，单独设置按在线表格包装计划的格式设置视图片，这样导数量排计划会方便很多；",
+      "image_ids": []
+    },
+    {
+      "block_id": 48,
+      "text": "在线表格包装计划，需要填写内容如下表；",
+      "image_ids": []
+    },
+    {
+      "block_id": 49,
+      "text": "注意：序列号一般情况只有售后才有序列号，若其他单指定序列号内勤会备注在包装及送货单特别要求或者备注，需要把备注的序列号填到序列号那一列；",
+      "image_ids": []
+    },
+    {
+      "block_id": 50,
+      "text": "",
+      "image_ids": [
+        "image-011"
+      ]
+    },
+    {
+      "block_id": 51,
+      "text": "每天早上上班第一件事，需要把头一天未包完的单子放到当天，操作方法：①找到头天包装计划并且把单号那列格式全部去掉——②筛选C列数量，去掉OK的——③把数量没有标OK的单号标绿色——④打开筛选，把标绿色同意箱号的单号标绿——⑤未完成的全部标绿后放到当天包装并删除箱号",
+      "image_ids": []
+    },
+    {
+      "block_id": 52,
+      "text": "",
+      "image_ids": [
+        "image-012"
+      ]
+    },
+    {
+      "block_id": 53,
+      "text": "",
+      "image_ids": [
+        "image-013"
+      ]
+    },
+    {
+      "block_id": 54,
+      "text": "",
+      "image_ids": [
+        "image-014"
+      ]
+    },
+    {
+      "block_id": 55,
+      "text": "",
+      "image_ids": [
+        "image-015"
+      ]
+    },
+    {
+      "block_id": 56,
+      "text": "",
+      "image_ids": [
+        "image-016"
+      ]
+    },
+    {
+      "block_id": 57,
+      "text": "",
+      "image_ids": [
+        "image-017"
+      ]
+    },
+    {
+      "block_id": 58,
+      "text": "4、当天新增的包装计划除售后维修单，其他都需要标为黄色，开好包装工单之后，裸机领料单需要@骆意、物料领料单需要@谢文涛",
+      "image_ids": []
+    },
+    {
+      "block_id": 59,
+      "text": "",
+      "image_ids": [
+        "image-018"
+      ]
+    },
+    {
+      "block_id": 60,
+      "text": "5、每天新增当天的插单、退换货、售后的单子，内勤都会登记在26年变更台账上，需要上午和下午不定时去点检，是否有未安排的。已安排的就在表格的处理进货填写已完成。",
+      "image_ids": []
+    },
+    {
+      "block_id": 61,
+      "text": "注意：当天新增需要当天发货的单子，不仅要安排包装计划，也要安排出货计划",
+      "image_ids": []
+    },
+    {
+      "block_id": 62,
+      "text": "",
+      "image_ids": [
+        "image-019"
+      ]
+    },
+    {
+      "block_id": 63,
+      "text": "推包装工单以及领料单",
+      "image_ids": []
+    },
+    {
+      "block_id": 64,
+      "text": "包装工单/领料单",
+      "image_ids": []
+    },
+    {
+      "block_id": 65,
+      "text": "销售单批量推包装工单-包装工单查询填写-包装工单推领料单-将物料领料单和机器领料单填写到表格上",
+      "image_ids": []
+    },
+    {
+      "block_id": 66,
+      "text": "销售单批量推包装工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 67,
+      "text": "在包装计划在线共享表格中筛选→也可以不用筛选, 看1-即可",
+      "image_ids": []
+    },
+    {
+      "block_id": 68,
+      "text": "销货明细_品号",
+      "image_ids": []
+    },
+    {
+      "block_id": 69,
+      "text": "筛选出1- (成品)",
+      "image_ids": []
+    },
+    {
+      "block_id": 70,
+      "text": "裸机不开包装 (2-/A/X的都不用开包装工单)",
+      "image_ids": []
+    },
+    {
+      "block_id": 71,
+      "text": "包装工单-空白",
+      "image_ids": []
+    },
+    {
+      "block_id": 72,
+      "text": "销售订单-批量推包装工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 73,
+      "text": "ERP系统-工单管理-订单产生工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 74,
+      "text": "订单单号-后面\"...\"进去",
+      "image_ids": []
+    },
+    {
+      "block_id": 75,
+      "text": "左上角高级查询",
+      "image_ids": []
+    },
+    {
+      "block_id": 76,
+      "text": "销售部门≠主计划、计划部(并且)",
+      "image_ids": []
+    },
+    {
+      "block_id": 77,
+      "text": "日期表达式→起始于（含）=20260101 (或者)",
+      "image_ids": []
+    },
+    {
+      "block_id": 78,
+      "text": "改成500笔",
+      "image_ids": []
+    },
+    {
+      "block_id": 79,
+      "text": "ctrl-A全选订单",
+      "image_ids": []
+    },
+    {
+      "block_id": 80,
+      "text": "",
+      "image_ids": [
+        "image-020"
+      ]
+    },
+    {
+      "block_id": 81,
+      "text": "点击确定",
+      "image_ids": []
+    },
+    {
+      "block_id": 82,
+      "text": "工单单别默认方式-指定单别",
+      "image_ids": []
+    },
+    {
+      "block_id": 83,
+      "text": "指定单据类型-包装工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 84,
+      "text": "",
+      "image_ids": [
+        "image-021"
+      ]
+    },
+    {
+      "block_id": 85,
+      "text": "点击下一步",
+      "image_ids": []
+    },
+    {
+      "block_id": 86,
+      "text": "等待页面跑出来后, 点击排序",
+      "image_ids": []
+    },
+    {
+      "block_id": 87,
+      "text": "筛选1-",
+      "image_ids": []
+    },
+    {
+      "block_id": 88,
+      "text": "备注哪一天推的-复制粘贴当天的日期",
+      "image_ids": []
+    },
+    {
+      "block_id": 89,
+      "text": "将1-一个个打钩",
+      "image_ids": []
+    },
+    {
+      "block_id": 90,
+      "text": "点击立即处理数据",
+      "image_ids": []
+    },
+    {
+      "block_id": 91,
+      "text": "",
+      "image_ids": [
+        "image-022"
+      ]
+    },
+    {
+      "block_id": 92,
+      "text": "等待系统处理好了之后关掉界面 (剩下就是2-/字母开头的)",
+      "image_ids": []
+    },
+    {
+      "block_id": 93,
+      "text": "包装工单查询填写",
+      "image_ids": []
+    },
+    {
+      "block_id": 94,
+      "text": "维护工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 95,
+      "text": "视图-带销售单号-包装",
+      "image_ids": []
+    },
+    {
+      "block_id": 96,
+      "text": "包装工单计划表-单身来源单号-需求单号",
+      "image_ids": []
+    },
+    {
+      "block_id": 97,
+      "text": "比对产品和数量",
+      "image_ids": []
+    },
+    {
+      "block_id": 98,
+      "text": "如果数量不对 (一般包装计划里面会少一点, 可能分批次交货)→拆分工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 99,
+      "text": "勾选该项-点击审核",
+      "image_ids": []
+    },
+    {
+      "block_id": 100,
+      "text": "单号复制到包装计划表中的包装工单那一列",
+      "image_ids": []
+    },
+    {
+      "block_id": 101,
+      "text": "*维护工单拆分",
+      "image_ids": []
+    },
+    {
+      "block_id": 102,
+      "text": "新建",
+      "image_ids": []
+    },
+    {
+      "block_id": 103,
+      "text": "先审核旧单",
+      "image_ids": []
+    },
+    {
+      "block_id": 104,
+      "text": "复制工单单号上去",
+      "image_ids": []
+    },
+    {
+      "block_id": 105,
+      "text": "新工单-数量-改成和包装计划表里面一样的数量",
+      "image_ids": []
+    },
+    {
+      "block_id": 106,
+      "text": "点击保存-点击生效",
+      "image_ids": []
+    },
+    {
+      "block_id": 107,
+      "text": "回到维护工单-刷新",
+      "image_ids": []
+    },
+    {
+      "block_id": 108,
+      "text": "会出现新的包装工单号",
+      "image_ids": []
+    },
+    {
+      "block_id": 109,
+      "text": "勾选该项-点击审核包装计划表上产品和数量相同的那一项",
+      "image_ids": []
+    },
+    {
+      "block_id": 110,
+      "text": "可以点进去看有没有审核",
+      "image_ids": []
+    },
+    {
+      "block_id": 111,
+      "text": "单号复制到包装计划表中的包装工单那一列",
+      "image_ids": []
+    },
+    {
+      "block_id": 112,
+      "text": "*品号供需统计表",
+      "image_ids": []
+    },
+    {
+      "block_id": 113,
+      "text": "在查询包装工单时, 如果发现状态码显示已生产",
+      "image_ids": []
+    },
+    {
+      "block_id": 114,
+      "text": "品号供需统计表",
+      "image_ids": []
+    },
+    {
+      "block_id": 115,
+      "text": "点击查询",
+      "image_ids": []
+    },
+    {
+      "block_id": 116,
+      "text": "用销货明细_品号-品名-特征码查找",
+      "image_ids": []
+    },
+    {
+      "block_id": 117,
+      "text": "如果有现有库存量说明之前包装过了",
+      "image_ids": []
+    },
+    {
+      "block_id": 118,
+      "text": "批量包装工单推领料单",
+      "image_ids": []
+    },
+    {
+      "block_id": 119,
+      "text": "包装工单单号合并",
+      "image_ids": []
+    },
+    {
+      "block_id": 120,
+      "text": "=TEXTJION(\";\",1,区域)",
+      "image_ids": []
+    },
+    {
+      "block_id": 121,
+      "text": "工单管理-工单发料-工单产生领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 122,
+      "text": "工单单号: 将刚刚合并在一起的工单单号复制上去",
+      "image_ids": []
+    },
+    {
+      "block_id": 123,
+      "text": "申请单据类型-生产领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 124,
+      "text": "将源单不同, 仓库不同打钩",
+      "image_ids": []
+    },
+    {
+      "block_id": 125,
+      "text": "立即处理",
+      "image_ids": []
+    },
+    {
+      "block_id": 126,
+      "text": "",
+      "image_ids": [
+        "image-023"
+      ]
+    },
+    {
+      "block_id": 127,
+      "text": "处理完成-点击关闭, ×关掉界面",
+      "image_ids": []
+    },
+    {
+      "block_id": 128,
+      "text": "物料领料单和机器领料单填写",
+      "image_ids": []
+    },
+    {
+      "block_id": 129,
+      "text": "维护领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 130,
+      "text": "未审核-搜索姓名-全选审核",
+      "image_ids": []
+    },
+    {
+      "block_id": 131,
+      "text": "查询方案-通用-带明细 (审核...内)",
+      "image_ids": []
+    },
+    {
+      "block_id": 132,
+      "text": "在包装计划表筛出空白的包装工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 133,
+      "text": "包装工单复制到领料申请单明细_工单单号",
+      "image_ids": []
+    },
+    {
+      "block_id": 134,
+      "text": "复制申请单号 (物料领料/机器领料单号)到包装计划表格中",
+      "image_ids": []
+    },
+    {
+      "block_id": 135,
+      "text": "机器领料单号: 2-",
+      "image_ids": []
+    },
+    {
+      "block_id": 136,
+      "text": "物料领料单号: 其他字母开头",
+      "image_ids": []
+    },
+    {
+      "block_id": 137,
+      "text": "手动开←包装计划表中没有来源单号同时销货明细_是1-开头的, 或者领料单/定制的bom里面有1-",
+      "image_ids": []
+    },
+    {
+      "block_id": 138,
+      "text": "维护工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 139,
+      "text": "新建",
+      "image_ids": []
+    },
+    {
+      "block_id": 140,
+      "text": "单据类型-包装工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 141,
+      "text": "复制产品品号和特征码过来 (确认复制过来是正确的)/后面不一定有特征码",
+      "image_ids": []
+    },
+    {
+      "block_id": 142,
+      "text": "成品品号最后是-0000的都有特征码",
+      "image_ids": []
+    },
+    {
+      "block_id": 143,
+      "text": "生管人员-黄炎文",
+      "image_ids": []
+    },
+    {
+      "block_id": 144,
+      "text": "预计开工日期-当天",
+      "image_ids": []
+    },
+    {
+      "block_id": 145,
+      "text": "预计产量-包装计划表中的销货明细_业务数量",
+      "image_ids": []
+    },
+    {
+      "block_id": 146,
+      "text": "点击一下下面空白处",
+      "image_ids": []
+    },
+    {
+      "block_id": 147,
+      "text": "点击确定",
+      "image_ids": []
+    },
+    {
+      "block_id": 148,
+      "text": "等待工单明细跳出来...",
+      "image_ids": []
+    },
+    {
+      "block_id": 149,
+      "text": "点击保存-点击审核-点击确定",
+      "image_ids": []
+    },
+    {
+      "block_id": 150,
+      "text": "点击扩展-下推领料申请",
+      "image_ids": []
+    },
+    {
+      "block_id": 151,
+      "text": "申请单据类型-生产领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 152,
+      "text": "将源单不同, 仓库不同打钩",
+      "image_ids": []
+    },
+    {
+      "block_id": 153,
+      "text": "立即处理",
+      "image_ids": []
+    },
+    {
+      "block_id": 154,
+      "text": "处理完成-点击关闭, ×关掉界面",
+      "image_ids": []
+    },
+    {
+      "block_id": 155,
+      "text": "将包装工单复制到包装计划表中",
+      "image_ids": []
+    },
+    {
+      "block_id": 156,
+      "text": "包装工单→物料领料单和机器领料单填写",
+      "image_ids": []
+    },
+    {
+      "block_id": 157,
+      "text": "注意：送样单、借出单、备机单ERP单据是19开头的，这种单子都需要手动开包装工单，没办法用销售订单推包装工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 158,
+      "text": "包装工单变更（有时候需要变更线缆或者配件版本）",
+      "image_ids": []
+    },
+    {
+      "block_id": 159,
+      "text": "维护领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 160,
+      "text": "检索要变更的工单单号",
+      "image_ids": []
+    },
+    {
+      "block_id": 161,
+      "text": "找到要变更的领料单",
+      "image_ids": []
+    },
+    {
+      "block_id": 162,
+      "text": "双击领料单",
+      "image_ids": []
+    },
+    {
+      "block_id": 163,
+      "text": "扩展-指定结束-选中要变更的序列号-确定",
+      "image_ids": []
+    },
+    {
+      "block_id": 164,
+      "text": "",
+      "image_ids": [
+        "image-024"
+      ]
+    },
+    {
+      "block_id": 165,
+      "text": "维护工单变更单",
+      "image_ids": []
+    },
+    {
+      "block_id": 166,
+      "text": "把包装工单放上去",
+      "image_ids": []
+    },
+    {
+      "block_id": 167,
+      "text": "变更原因: 版本变更/数量变更",
+      "image_ids": []
+    },
+    {
+      "block_id": 168,
+      "text": "",
+      "image_ids": [
+        "image-025"
+      ]
+    },
+    {
+      "block_id": 169,
+      "text": "BOM",
+      "image_ids": []
+    },
+    {
+      "block_id": 170,
+      "text": "",
+      "image_ids": [
+        "image-026"
+      ]
+    },
+    {
+      "block_id": 171,
+      "text": "修改: 把原来的料号放上去, 用量改为0",
+      "image_ids": []
+    },
+    {
+      "block_id": 172,
+      "text": "新增: 把变更后的料号放上去, 填写需要的用量",
+      "image_ids": []
+    },
+    {
+      "block_id": 173,
+      "text": "保存, 让杨梅或者黄炎文审核",
+      "image_ids": []
+    },
+    {
+      "block_id": 174,
+      "text": "维护领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 175,
+      "text": "",
+      "image_ids": [
+        "image-027"
+      ]
+    },
+    {
+      "block_id": 176,
+      "text": "新增",
+      "image_ids": []
+    },
+    {
+      "block_id": 177,
+      "text": "单据类型-生产领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 178,
+      "text": "把包装工单放在领料申请单工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 179,
+      "text": "填写申请套数",
+      "image_ids": []
+    },
+    {
+      "block_id": 180,
+      "text": "点下方空白处",
+      "image_ids": []
+    },
+    {
+      "block_id": 181,
+      "text": "跑出明细后, 点击保存/审核",
+      "image_ids": []
+    },
+    {
+      "block_id": 182,
+      "text": "刷新",
+      "image_ids": []
+    },
+    {
+      "block_id": 183,
+      "text": "复制新的单号到包装计划上",
+      "image_ids": []
+    },
+    {
+      "block_id": 184,
+      "text": "@ 仓库发料",
+      "image_ids": []
+    }
+  ],
+  "images": [
+    {
+      "image_id": "image-001",
+      "path": "packaging-manual\\image-001.png",
+      "size": [
+        1908,
+        1059
+      ]
+    },
+    {
+      "image_id": "image-002",
+      "path": "packaging-manual\\image-002.png",
+      "size": [
+        1907,
+        1063
+      ]
+    },
+    {
+      "image_id": "image-003",
+      "path": "packaging-manual\\image-003.png",
+      "size": [
+        1813,
+        994
+      ]
+    },
+    {
+      "image_id": "image-004",
+      "path": "packaging-manual\\image-004.png",
+      "size": [
+        1900,
+        992
+      ]
+    },
+    {
+      "image_id": "image-005",
+      "path": "packaging-manual\\image-005.png",
+      "size": [
+        1496,
+        720
+      ]
+    },
+    {
+      "image_id": "image-006",
+      "path": "packaging-manual\\image-006.png",
+      "size": [
+        1860,
+        943
+      ]
+    },
+    {
+      "image_id": "image-007",
+      "path": "packaging-manual\\image-007.png",
+      "size": [
+        1894,
+        812
+      ]
+    },
+    {
+      "image_id": "image-008",
+      "path": "packaging-manual\\image-008.png",
+      "size": [
+        1834,
+        642
+      ]
+    },
+    {
+      "image_id": "image-009",
+      "path": "packaging-manual\\image-009.png",
+      "size": [
+        1913,
+        736
+      ]
+    },
+    {
+      "image_id": "image-010",
+      "path": "packaging-manual\\image-010.png",
+      "size": [
+        1764,
+        934
+      ]
+    },
+    {
+      "image_id": "image-011",
+      "path": "packaging-manual\\image-011.png",
+      "size": [
+        1830,
+        922
+      ]
+    },
+    {
+      "image_id": "image-012",
+      "path": "packaging-manual\\image-012.png",
+      "size": [
+        1508,
+        919
+      ]
+    },
+    {
+      "image_id": "image-013",
+      "path": "packaging-manual\\image-013.png",
+      "size": [
+        1123,
+        908
+      ]
+    },
+    {
+      "image_id": "image-014",
+      "path": "packaging-manual\\image-014.png",
+      "size": [
+        1630,
+        769
+      ]
+    },
+    {
+      "image_id": "image-015",
+      "path": "packaging-manual\\image-015.png",
+      "size": [
+        1802,
+        915
+      ]
+    },
+    {
+      "image_id": "image-016",
+      "path": "packaging-manual\\image-016.png",
+      "size": [
+        1717,
+        920
+      ]
+    },
+    {
+      "image_id": "image-017",
+      "path": "packaging-manual\\image-017.png",
+      "size": [
+        1856,
+        918
+      ]
+    },
+    {
+      "image_id": "image-018",
+      "path": "packaging-manual\\image-018.png",
+      "size": [
+        1781,
+        929
+      ]
+    },
+    {
+      "image_id": "image-019",
+      "path": "packaging-manual\\image-019.png",
+      "size": [
+        1796,
+        595
+      ]
+    },
+    {
+      "image_id": "image-020",
+      "path": "packaging-manual\\image-020.png",
+      "size": [
+        1907,
+        1045
+      ]
+    },
+    {
+      "image_id": "image-021",
+      "path": "packaging-manual\\image-021.png",
+      "size": [
+        917,
+        474
+      ]
+    },
+    {
+      "image_id": "image-022",
+      "path": "packaging-manual\\image-022.png",
+      "size": [
+        917,
+        475
+      ]
+    },
+    {
+      "image_id": "image-023",
+      "path": "packaging-manual\\image-023.png",
+      "size": [
+        917,
+        486
+      ]
+    },
+    {
+      "image_id": "image-024",
+      "path": "packaging-manual\\image-024.png",
+      "size": [
+        1514,
+        803
+      ]
+    },
+    {
+      "image_id": "image-025",
+      "path": "packaging-manual\\image-025.png",
+      "size": [
+        1530,
+        806
+      ]
+    },
+    {
+      "image_id": "image-026",
+      "path": "packaging-manual\\image-026.png",
+      "size": [
+        1529,
+        770
+      ]
+    },
+    {
+      "image_id": "image-027",
+      "path": "packaging-manual\\image-027.png",
+      "size": [
+        1527,
+        807
+      ]
+    }
+  ]
+}

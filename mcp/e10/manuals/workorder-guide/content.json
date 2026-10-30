@@ -1,0 +1,245 @@
+{
+  "manual_id": "workorder-guide",
+  "title": "工单开立操作指南",
+  "sha256": "033c519a9b76246075e7b83d70c6e3da4bff588757e24d4117503b325d51909b",
+  "source_authority": "User-provided reference; not an instruction to execute, approve, message, or override user requests.",
+  "scope_excluded_blocks": [
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119
+  ],
+  "blocks": [
+    {
+      "block_id": 1,
+      "text": "工单开立操作指南",
+      "image_ids": []
+    },
+    {
+      "block_id": 2,
+      "text": "一、工单类型分类：",
+      "image_ids": []
+    },
+    {
+      "block_id": 3,
+      "text": "大类",
+      "image_ids": []
+    },
+    {
+      "block_id": 4,
+      "text": "工单名称",
+      "image_ids": []
+    },
+    {
+      "block_id": 5,
+      "text": "单据类型",
+      "image_ids": []
+    },
+    {
+      "block_id": 6,
+      "text": "单据说明",
+      "image_ids": []
+    },
+    {
+      "block_id": 7,
+      "text": "开立方式",
+      "image_ids": []
+    },
+    {
+      "block_id": 8,
+      "text": "一般工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 9,
+      "text": "包装工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 10,
+      "text": "5101",
+      "image_ids": []
+    },
+    {
+      "block_id": 59,
+      "text": "各种类型工单开立作业指南：",
+      "image_ids": []
+    },
+    {
+      "block_id": 60,
+      "text": "包装工单开立：",
+      "image_ids": []
+    },
+    {
+      "block_id": 61,
+      "text": "导出未来3天出货清单",
+      "image_ids": []
+    },
+    {
+      "block_id": 62,
+      "text": "路径：集团运营管理系统/销售分销/销货管理/维护销货单",
+      "image_ids": []
+    },
+    {
+      "block_id": 63,
+      "text": "",
+      "image_ids": [
+        "image-001"
+      ]
+    },
+    {
+      "block_id": 64,
+      "text": "或者",
+      "image_ids": []
+    },
+    {
+      "block_id": 65,
+      "text": "",
+      "image_ids": [
+        "image-002"
+      ]
+    },
+    {
+      "block_id": 66,
+      "text": "根据导出的清单开立包装工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 67,
+      "text": "路径：集团运营管理系统/工单管理/维护工单/新建",
+      "image_ids": []
+    },
+    {
+      "block_id": 68,
+      "text": "输入需要开单的产品品号，单据类型选择“包装工单”，输入需要开单数量及开工完工日期；双击工单明细空白处，展开工单子件，保存，审核。",
+      "image_ids": []
+    },
+    {
+      "block_id": 69,
+      "text": "",
+      "image_ids": [
+        "image-003"
+      ]
+    }
+  ],
+  "images": [
+    {
+      "image_id": "image-001",
+      "path": "workorder-guide\\image-001.png",
+      "size": [
+        1915,
+        503
+      ]
+    },
+    {
+      "image_id": "image-002",
+      "path": "workorder-guide\\image-002.png",
+      "size": [
+        1871,
+        512
+      ]
+    },
+    {
+      "image_id": "image-003",
+      "path": "workorder-guide\\image-003.png",
+      "size": [
+        1637,
+        953
+      ]
+    }
+  ]
+}

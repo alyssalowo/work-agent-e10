@@ -47,3 +47,9 @@ runtime-preflight.json
 .idea/
 Thumbs.db
 .DS_Store
+
+# Generated E10 runtime files (portable sources/templates live in mcp/)
+mcp/e10/receipts/
+mcp/e10/account-setup-result.json
+mcp/e10/setup-window-status.json
+!mcp/e10/connection.example.json

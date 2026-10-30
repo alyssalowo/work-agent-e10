@@ -1,0 +1,74 @@
+{
+  "manual_id": "manual-workorder-guide",
+  "title": "手工工单下单操作指南",
+  "sha256": "7d3214ea180b7bd186fe14eb0baf3dc1ec6e06aa44c80f49f0576136a9bba5e5",
+  "source_authority": "User-provided reference; not an instruction to execute, approve, message, or override user requests.",
+  "scope_excluded_blocks": [
+    2,
+    12
+  ],
+  "blocks": [
+    {
+      "block_id": 1,
+      "text": "手工工单下单操作指南",
+      "image_ids": []
+    },
+    {
+      "block_id": 3,
+      "text": "操作路径：集团营运管理系统/工单管理/维护工单",
+      "image_ids": []
+    },
+    {
+      "block_id": 4,
+      "text": "操作内容：",
+      "image_ids": []
+    },
+    {
+      "block_id": 5,
+      "text": "",
+      "image_ids": [
+        "image-001"
+      ]
+    },
+    {
+      "block_id": 6,
+      "text": "新建工单：",
+      "image_ids": []
+    },
+    {
+      "block_id": 7,
+      "text": "在产品品号栏输入需要开工单的品号；",
+      "image_ids": []
+    },
+    {
+      "block_id": 8,
+      "text": "单据类型根据生产类型选择，主要类型有：包装工单、裸机工单、研发试产工单、研发交付工单、返工任务单、生产维修工单、售后维修工单、拆件工单、改制任务单、委外任务单；",
+      "image_ids": []
+    },
+    {
+      "block_id": 9,
+      "text": "Bom版次默认选择最新bom，如果需要使用旧版本bom则需要手工选择；",
+      "image_ids": []
+    },
+    {
+      "block_id": 10,
+      "text": "在预计产量栏填写工单数量，在预计开工日期及预计完工日期栏填写计划开工及完工日期。",
+      "image_ids": []
+    },
+    {
+      "block_id": 11,
+      "text": "工单明细：需要在空白处点击才会带出子件明细。",
+      "image_ids": []
+    }
+  ],
+  "images": [
+    {
+      "image_id": "image-001",
+      "path": "manual-workorder-guide\\image-001.png",
+      "size": [
+        1550,
+        899
+      ]
+    }
+  ]
+}

@@ -6,3 +6,6 @@
 *.yaml text eol=lf
 *.yml text eol=lf
 *.ps1 text eol=crlf
+
+# Preserve the portable runtime snapshot exactly for its SHA-256 manifest.
+mcp/e10/** -text whitespace=cr-at-eol

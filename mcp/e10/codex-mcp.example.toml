@@ -1,0 +1,10 @@
+[mcp_servers.dingjie-e10-account]
+enabled = true
+command = "__E10_ROOT__/.venv/Scripts/python.exe"
+args = ["__E10_ROOT__/server.py"]
+cwd = "__E10_ROOT__"
+startup_timeout_sec = 30
+tool_timeout_sec = 360
+
+[mcp_servers.dingjie-e10-account.env]
+PYTHONUTF8 = "1"

@@ -1,0 +1,86 @@
+{
+  "manual_id": "picking-guide",
+  "title": "领料申请操作指南",
+  "sha256": "49f5aceb4b7ba5a1d9dd4e0b678ea8eb24a9a0d8fca2c8312973bdc35b143b0c",
+  "source_authority": "User-provided reference; not an instruction to execute, approve, message, or override user requests.",
+  "scope_excluded_blocks": [],
+  "blocks": [
+    {
+      "block_id": 1,
+      "text": "工单领料申请操作指南",
+      "image_ids": []
+    },
+    {
+      "block_id": 2,
+      "text": "领料申请方式：工单批量领料、工单零星领料",
+      "image_ids": []
+    },
+    {
+      "block_id": 3,
+      "text": "工单（含生产工单和委外工单）批量领料",
+      "image_ids": []
+    },
+    {
+      "block_id": 4,
+      "text": "1、路径：集团营运管理系统/工单管理/工单发料/维护领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 5,
+      "text": "点击新建，单据类型选择“生产领料申请单”或者“委外领料申请单”，在领料申请单工单输入需要领料的工单号、领料套数，双击领料申请单明细，展开工单领料明细",
+      "image_ids": []
+    },
+    {
+      "block_id": 6,
+      "text": "",
+      "image_ids": [
+        "image-001"
+      ]
+    },
+    {
+      "block_id": 7,
+      "text": "2、打印领料单。",
+      "image_ids": []
+    },
+    {
+      "block_id": 8,
+      "text": "工单零星领料",
+      "image_ids": []
+    },
+    {
+      "block_id": 9,
+      "text": "路径：集团营运管理系统/工单管理/工单发料/维护领料申请单",
+      "image_ids": []
+    },
+    {
+      "block_id": 10,
+      "text": "点击新建，单据类型选择“生产领料申请单”或者“委外领料申请单”，在“领料申请单工单”处不要输入任何信息，手动在领料申请单明细处输入需要领的物料及工单号信息。",
+      "image_ids": []
+    },
+    {
+      "block_id": 11,
+      "text": "",
+      "image_ids": [
+        "image-002"
+      ]
+    }
+  ],
+  "images": [
+    {
+      "image_id": "image-001",
+      "path": "picking-guide\\image-001.png",
+      "size": [
+        1427,
+        908
+      ]
+    },
+    {
+      "image_id": "image-002",
+      "path": "picking-guide\\image-002.png",
+      "size": [
+        1484,
+        858
+      ]
+    }
+  ]
+}

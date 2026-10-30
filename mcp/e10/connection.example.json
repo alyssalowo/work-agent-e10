@@ -1,0 +1,9 @@
+{
+  "client_directory": "__LOCAL_E10_CLIENT_DIRECTORY__",
+  "server_url": "http://192.168.0.2:8002/WCFGeneralService",
+  "account_set_id": "DemoCompany",
+  "account_set_name": "大寰公司",
+  "authentication": "E10用户身份认证",
+  "communication_mode": "BinaryHttp",
+  "language": "zh-CN"
+}
